@@ -1,0 +1,137 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dvslot_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-dvslot_dev}
+      POSTGRES_USER: ${DB_USER:-dvslot_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password123}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - dvslot_network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dvslot_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dvslot_network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: dvslot_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dvslot}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-password123}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - dvslot_network
+    restart: unless-stopped
+
+  # Main API Application
+  api:
+    build: .
+    container_name: dvslot_api
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dvslot_dev}
+      DB_USER: ${DB_USER:-dvslot_user}
+      DB_PASSWORD: ${DB_PASSWORD:-password123}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-dvslot}:${RABBITMQ_PASSWORD:-password123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_here}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./logs:/usr/src/app/logs
+    networks:
+      - dvslot_network
+    restart: unless-stopped
+
+  # Background Services (Scheduler & Workers)
+  services:
+    build: .
+    container_name: dvslot_services
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dvslot_dev}
+      DB_USER: ${DB_USER:-dvslot_user}
+      DB_PASSWORD: ${DB_PASSWORD:-password123}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-dvslot}:${RABBITMQ_PASSWORD:-password123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_here}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      SCRAPING_DELAY_MIN: ${SCRAPING_DELAY_MIN:-30000}
+      SCRAPING_DELAY_MAX: ${SCRAPING_DELAY_MAX:-60000}
+      MAX_CONCURRENT_SCRAPERS: ${MAX_CONCURRENT_SCRAPERS:-5}
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./logs:/usr/src/app/logs
+    networks:
+      - dvslot_network
+    restart: unless-stopped
+    command: ["node", "src/app.js"]
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: dvslot_nginx
+    ports:
+      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_SSL_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    networks:
+      - dvslot_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+networks:
+  dvslot_network:
+    driver: bridge
