@@ -1,0 +1,517 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+} from 'react-native';
+import { api, TestCenter, TestSlot, SearchFilters } from '../../services/api';
+
+interface SearchResult {
+  testCenters: TestCenter[];
+  testSlots: TestSlot[];
+  totalResults: number;
+}
+
+export default function Search() {
+  const [postcode, setPostcode] = useState('');
+  const [radius, setRadius] = useState(25);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [lastSearchQuery, setLastSearchQuery] = useState('');
+
+  const radiusOptions = [
+    { label: '5 miles', value: 5 },
+    { label: '10 miles', value: 10 },
+    { label: '25 miles', value: 25 },
+    { label: '50 miles', value: 50 },
+  ];
+
+  const handleSearch = async () => {
+    if (!postcode.trim()) {
+      Alert.alert('Error', 'Please enter a postcode');
+      return;
+    }
+    
+    // Basic postcode validation (UK format)
+    const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
+    if (!postcodeRegex.test(postcode.trim())) {
+      Alert.alert('Invalid Postcode', 'Please enter a valid UK postcode (e.g., SW1A 1AA)');
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchResults(null);
+
+    try {
+      const searchFilters: SearchFilters = {
+        postcode: postcode.trim().toUpperCase(),
+        radius,
+        dateRange: {
+          start: new Date().toISOString().split('T')[0],
+          end: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        },
+      };
+
+      console.log('🔍 Searching for test slots...', searchFilters);
+
+      // Call the actual API service
+      const testCentersResponse = await api.searchTestCenters(searchFilters);
+      const availableSlotsResponse = await api.getAvailableSlots(searchFilters);
+
+      if (testCentersResponse.success && availableSlotsResponse.success) {
+        const results: SearchResult = {
+          testCenters: testCentersResponse.data || [],
+          testSlots: availableSlotsResponse.data || [],
+          totalResults: (testCentersResponse.data?.length || 0) + (availableSlotsResponse.data?.length || 0),
+        };
+
+        setSearchResults(results);
+        setLastSearchQuery(`${postcode.trim().toUpperCase()} within ${radius} miles`);
+
+        if (results.totalResults === 0) {
+          Alert.alert(
+            'No Results Found', 
+            `No test slots found for ${postcode.trim().toUpperCase()} within ${radius} miles. Try:\n\n• Increasing your search radius\n• Checking a different postcode\n• Setting up an alert to be notified when slots become available`
+          );
+        } else {
+          Alert.alert('Search Complete', `Found ${results.totalResults} test centers and available slots.`);
+        }
+      } else {
+        // Handle API errors
+        const errorMessage = testCentersResponse.error || availableSlotsResponse.error || 'Unknown error occurred';
+        Alert.alert('Search Failed', `Unable to search for test slots: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      Alert.alert(
+        'Search Error', 
+        'Unable to connect to DVSA services at the moment. This could be due to:\n\n• Network connectivity issues\n• DVSA website maintenance\n• High traffic on DVSA servers\n\nPlease try again in a few minutes.'
+      );
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <Text style={styles.title}>🔍 Search Test Slots</Text>
+          <Text style={styles.subtitle}>Find available driving test slots near you</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Postcode</Text>
+            <TextInput
+              style={styles.input}
+              value={postcode}
+              onChangeText={setPostcode}
+              placeholder="Enter your postcode (e.g., SW1A 1AA)"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Search Radius</Text>
+            <View style={styles.radiusContainer}>
+              {radiusOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.radiusButton,
+                    radius === option.value && styles.radiusButtonActive
+                  ]}
+                  onPress={() => setRadius(option.value)}
+                >
+                  <Text style={[
+                    styles.radiusButtonText,
+                    radius === option.value && styles.radiusButtonTextActive
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.searchButton, isSearching && styles.searchButtonDisabled]}
+            onPress={handleSearch}
+            disabled={isSearching}
+          >
+            {isSearching ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.searchButtonText}>Search Test Slots</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.tips}>
+          <Text style={styles.tipsTitle}>💡 Search Tips</Text>
+          <Text style={styles.tip}>• Enter your full postcode for best results</Text>
+          <Text style={styles.tip}>• Increase radius for more options</Text>
+          <Text style={styles.tip}>• Set up alerts for automatic notifications</Text>
+        </View>
+
+        {searchResults && (
+          <View style={styles.resultsSection}>
+            <View style={styles.resultsHeader}>
+              <Text style={styles.resultsTitle}>
+                📍 Results for {lastSearchQuery}
+              </Text>
+              <Text style={styles.resultsSubtitle}>
+                Found {searchResults.totalResults} results
+              </Text>
+            </View>
+
+            {searchResults.testCenters.length > 0 && (
+              <View style={styles.testCentersSection}>
+                <Text style={styles.sectionTitle}>🏢 Test Centres</Text>
+                {searchResults.testCenters.map((center) => (
+                  <View key={center.id} style={styles.testCenterCard}>
+                    <View style={styles.testCenterHeader}>
+                      <Text style={styles.testCenterName}>{center.name}</Text>
+                      <Text style={styles.testCenterDistance}>
+                        {center.distance?.toFixed(1)} miles
+                      </Text>
+                    </View>
+                    <Text style={styles.testCenterAddress}>
+                      {center.address}, {center.postcode}
+                    </Text>
+                    <View style={styles.availabilityRow}>
+                      <Text style={[
+                        styles.availabilityText,
+                        center.availability === 0 && styles.noAvailability
+                      ]}>
+                        {center.availability === 0 
+                          ? '❌ No slots available' 
+                          : `✅ ${center.availability} slots available`
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {searchResults.testSlots.length > 0 && (
+              <View style={styles.testSlotsSection}>
+                <Text style={styles.sectionTitle}>📅 Available Test Slots</Text>
+                {searchResults.testSlots.map((slot) => (
+                  <View key={slot.id} style={styles.testSlotCard}>
+                    <View style={styles.slotHeader}>
+                      <Text style={styles.slotCenter}>{slot.centerName}</Text>
+                      <Text style={styles.slotPrice}>£{slot.price}</Text>
+                    </View>
+                    <View style={styles.slotDetails}>
+                      <Text style={styles.slotDate}>
+                        📅 {new Date(slot.date).toLocaleDateString('en-GB', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                      <Text style={styles.slotTime}>🕐 {slot.time}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.alertButton}
+                      onPress={() => Alert.alert(
+                        'Set Alert', 
+                        `Would you like to set up an alert for similar slots at ${slot.centerName}?`
+                      )}
+                    >
+                      <Text style={styles.alertButtonText}>🔔 Set Alert</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {searchResults.testCenters.length === 0 && searchResults.testSlots.length === 0 && (
+              <View style={styles.noResultsSection}>
+                <Text style={styles.noResultsTitle}>😔 No Results Found</Text>
+                <Text style={styles.noResultsText}>
+                  This is common with DVSA test slots! Try:
+                </Text>
+                <Text style={styles.noResultsTip}>• Expanding your search radius</Text>
+                <Text style={styles.noResultsTip}>• Searching a different postcode area</Text>
+                <Text style={styles.noResultsTip}>• Setting up an alert for when slots become available</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#1E3A8A',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#E5E7EB',
+    textAlign: 'center',
+  },
+  form: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    fontSize: 16,
+  },
+  radiusContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  radiusButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  radiusButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  radiusButtonText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  radiusButtonTextActive: {
+    color: '#fff',
+  },
+  searchButton: {
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  tips: {
+    margin: 20,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tipsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  tip: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  // Search Results Styles
+  resultsSection: {
+    margin: 20,
+  },
+  resultsHeader: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  resultsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  resultsSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  testCentersSection: {
+    marginBottom: 20,
+  },
+  testSlotsSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  testCenterCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  testCenterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  testCenterName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+  testCenterDistance: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  testCenterAddress: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  availabilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  availabilityText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#10B981',
+  },
+  noAvailability: {
+    color: '#EF4444',
+  },
+  testSlotCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  slotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  slotCenter: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+  slotPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10B981',
+  },
+  slotDetails: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 16,
+  },
+  slotDate: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  slotTime: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  alertButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  alertButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  noResultsSection: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  noResultsTip: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+});

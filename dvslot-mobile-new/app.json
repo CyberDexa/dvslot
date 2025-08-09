@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "DVSlot - Driving Test Finder",
+    "slug": "dvslot",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "dvslot",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "description": "Find available driving test slots faster and easier. Get notified when new slots become available at your preferred test centers.",
+    "privacy": "public",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3B82F6"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dvslot.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "UIBackgroundModes": ["background-app-refresh"],
+        "NSUserNotificationsUsageDescription": "This app uses notifications to alert you about available driving test slots.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to find nearby test centers."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#3B82F6"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.dvslot.app",
+      "versionCode": 1,
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "name": "DVSlot - Driving Test Finder",
+      "shortName": "DVSlot",
+      "lang": "en",
+      "scope": "/",
+      "themeColor": "#3B82F6",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "startUrl": "/"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "dvslot-app-2025"
+      }
+    }
+  }
+}
