@@ -12,10 +12,11 @@ import {
   FlatList,
 } from 'react-native';
 import { api, TestCenter, TestSlot, SearchFilters } from '../../services/api';
+import { supabaseApi, TestCenter as SupabaseTestCenter, TestSlot as SupabaseTestSlot, SearchFilters as SupabaseSearchFilters } from '../../services/supabase-api';
 
 interface SearchResult {
-  testCenters: TestCenter[];
-  testSlots: TestSlot[];
+  testCenters: SupabaseTestCenter[];
+  testSlots: SupabaseTestSlot[];
   totalResults: number;
 }
 
@@ -61,9 +62,16 @@ export default function Search() {
 
       console.log('🔍 Searching for test slots...', searchFilters);
 
-      // Call the actual API service
-      const testCentersResponse = await api.searchTestCenters(searchFilters);
-      const availableSlotsResponse = await api.getAvailableSlots(searchFilters);
+      // Use Supabase API for real data
+      const testCentersResponse = await supabaseApi.searchTestCenters({
+        postcode: searchFilters.postcode,
+        radius: searchFilters.radius,
+      });
+
+      const availableSlotsResponse = await supabaseApi.getAvailableSlots({
+        postcode: searchFilters.postcode,
+        dateRange: searchFilters.dateRange,
+      });
 
       if (testCentersResponse.success && availableSlotsResponse.success) {
         const results: SearchResult = {
@@ -81,7 +89,7 @@ export default function Search() {
             `No test slots found for ${postcode.trim().toUpperCase()} within ${radius} miles. Try:\n\n• Increasing your search radius\n• Checking a different postcode\n• Setting up an alert to be notified when slots become available`
           );
         } else {
-          Alert.alert('Search Complete', `Found ${results.totalResults} test centers and available slots.`);
+          Alert.alert('Search Complete', `Found ${results.testCenters.length} test centers and ${results.testSlots.length} available slots from our comprehensive UK database!`);
         }
       } else {
         // Handle API errors
@@ -92,7 +100,7 @@ export default function Search() {
       console.error('Search error:', error);
       Alert.alert(
         'Search Error', 
-        'Unable to connect to DVSA services at the moment. This could be due to:\n\n• Network connectivity issues\n• DVSA website maintenance\n• High traffic on DVSA servers\n\nPlease try again in a few minutes.'
+        'Unable to connect to our database at the moment. Please check your internet connection and try again.'
       );
     } finally {
       setIsSearching(false);
@@ -182,11 +190,14 @@ export default function Search() {
                     <View style={styles.testCenterHeader}>
                       <Text style={styles.testCenterName}>{center.name}</Text>
                       <Text style={styles.testCenterDistance}>
-                        {center.distance?.toFixed(1)} miles
+                        {center.region}
                       </Text>
                     </View>
                     <Text style={styles.testCenterAddress}>
                       {center.address}, {center.postcode}
+                    </Text>
+                    <Text style={styles.testCenterCity}>
+                      📍 {center.city}, {center.region}
                     </Text>
                     <View style={styles.availabilityRow}>
                       <Text style={[
@@ -223,6 +234,7 @@ export default function Search() {
                         })}
                       </Text>
                       <Text style={styles.slotTime}>🕐 {slot.time}</Text>
+                      <Text style={styles.slotType}>🚗 {slot.test_type}</Text>
                     </View>
                     <TouchableOpacity 
                       style={styles.alertButton}
@@ -426,6 +438,11 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 8,
   },
+  testCenterCity: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
   availabilityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -475,6 +492,11 @@ const styles = StyleSheet.create({
   slotTime: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  slotType: {
+    fontSize: 14,
+    color: '#6B7280',
+    textTransform: 'capitalize',
   },
   alertButton: {
     backgroundColor: '#3B82F6',
