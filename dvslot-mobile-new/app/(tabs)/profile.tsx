@@ -108,14 +108,23 @@ export default function Profile() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
-            setLoading(true);
-            const result = await authService.signOut();
-            setLoading(false);
-            
-            if (result.success) {
-              router.replace('/auth/login');
-            } else {
-              Alert.alert('Error', result.error || 'Failed to sign out');
+            try {
+              setLoading(true);
+              const result = await authService.signOut();
+              
+              if (result.success) {
+                // Clear auth state and navigate to home page
+                setAuthState(null);
+                setUserAlerts([]);
+                router.push('/');
+              } else {
+                Alert.alert('Error', result.error || 'Failed to sign out');
+              }
+            } catch (error) {
+              console.error('Sign out error:', error);
+              Alert.alert('Error', 'An unexpected error occurred during sign out');
+            } finally {
+              setLoading(false);
             }
           }
         }
