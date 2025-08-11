@@ -53,6 +53,49 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Test Supabase connection with simpler query
+app.get('/api/test-connection', async (req, res) => {
+    try {
+        console.log('Testing basic Supabase connection...');
+        
+        // Try a simple query first
+        const { data, error } = await supabase
+            .from('test_centers')
+            .select('name, region')
+            .limit(1);
+
+        if (error) {
+            console.error('Supabase error details:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+            return res.status(500).json({
+                success: false,
+                error: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Supabase connection working!',
+            dataCount: data ? data.length : 0,
+            sample: data && data.length > 0 ? data[0] : null
+        });
+    } catch (error) {
+        console.error('Connection test error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            type: error.constructor.name
+        });
+    }
+});
+
 // Debug endpoint to check environment
 app.get('/api/debug', (req, res) => {
     res.json({
