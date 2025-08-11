@@ -53,16 +53,36 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Debug endpoint to check environment
+app.get('/api/debug', (req, res) => {
+    res.json({
+        environment: process.env.NODE_ENV,
+        hasSupabaseUrl: !!process.env.SUPABASE_URL,
+        hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY,
+        supabaseUrl: process.env.SUPABASE_URL || 'NOT_SET',
+        keyLength: process.env.SUPABASE_ANON_KEY ? process.env.SUPABASE_ANON_KEY.length : 0
+    });
+});
+
 // API Routes
 app.get('/api/test-centers', async (req, res) => {
     try {
+        console.log('Testing Supabase connection...');
+        console.log('URL:', process.env.SUPABASE_URL);
+        console.log('Key length:', process.env.SUPABASE_ANON_KEY ? process.env.SUPABASE_ANON_KEY.length : 'NO KEY');
+        
         const { data, error } = await supabase
             .from('test_centers')
             .select('*')
             .eq('is_active', true)
             .order('name');
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+
+        console.log('Query successful, rows returned:', data.length);
 
         res.json({
             success: true,
@@ -70,9 +90,11 @@ app.get('/api/test-centers', async (req, res) => {
             count: data.length
         });
     } catch (error) {
+        console.error('API Error:', error);
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            details: error.details || 'No additional details'
         });
     }
 });
