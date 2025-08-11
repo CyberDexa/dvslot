@@ -8,7 +8,7 @@
     "scheme": "dvslot",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "description": "Find available driving test slots faster and easier. Get notified when new slots become available at your preferred test centers.",
+    "description": "Find available driving test slots faster and easier. Get notified when new slots become available at your preferred test centers. Mobile-optimized for the best experience.",
     "privacy": "public",
     "splash": {
       "image": "./assets/images/splash-icon.png",

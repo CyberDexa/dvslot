@@ -10,6 +10,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 // Import web configuration for mobile responsiveness
 if (Platform.OS === 'web') {
+  console.log('🔄 DVSlot: Loading web configuration...');
   require('@/utils/webConfig');
 }
 
