@@ -113,7 +113,7 @@ export default function Profile() {
             setLoading(false);
             
             if (result.success) {
-              router.replace('/(tabs)');
+              router.replace('/auth/login');
             } else {
               Alert.alert('Error', result.error || 'Failed to sign out');
             }
@@ -262,7 +262,10 @@ export default function Profile() {
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/')}
+          >
             <Text style={styles.actionButtonIcon}>🔍</Text>
             <View style={styles.actionButtonContent}>
               <Text style={styles.actionButtonTitle}>Search for Slots</Text>
@@ -270,7 +273,10 @@ export default function Profile() {
             </View>
             <Text style={styles.actionButtonArrow}>→</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/two')}
+          >
             <Text style={styles.actionButtonIcon}>⚙️</Text>
             <View style={styles.actionButtonContent}>
               <Text style={styles.actionButtonTitle}>Manage Alerts</Text>
@@ -278,7 +284,10 @@ export default function Profile() {
             </View>
             <Text style={styles.actionButtonArrow}>→</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/')}
+          >
             <Text style={styles.actionButtonIcon}>📍</Text>
             <View style={styles.actionButtonContent}>
               <Text style={styles.actionButtonTitle}>Test Centers</Text>
