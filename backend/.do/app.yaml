@@ -1,0 +1,39 @@
+# DigitalOcean App Platform configuration
+name: dvslot-backend
+services:
+- name: backend-service
+  source_dir: /
+  github:
+    repo: CyberDexa/dvslot
+    branch: main
+  run_command: npm start
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: SUPABASE_URL
+    value: https://woyivlvtvfwrnlbwydhr.supabase.co
+  - key: SUPABASE_SERVICE_KEY
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndveWl2bHZ0dmZ3cm5sYnd5ZGhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNjU1OTU5MywiZXhwIjoyMDUyMTM1NTkzfQ.5e6gWIJUwKI8b0MwsPX2RCGuvEGEU6wJWz9PnYP8QTI
+  - key: DVSA_BASE_URL
+    value: https://www.gov.uk/book-driving-test
+  - key: SCRAPING_DELAY_MIN
+    value: "8000"
+  - key: SCRAPING_DELAY_MAX
+    value: "20000"
+  - key: MAX_CONCURRENT_SCRAPERS
+    value: "1"
+  - key: SCRAPER_TIMEOUT
+    value: "90000"
+  - key: SCRAPE_INTERVAL_MINUTES
+    value: "45"
+  - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+    value: "true"
+    
+  http_port: 3001
+  
+  health_check:
+    http_path: /health

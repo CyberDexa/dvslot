@@ -1,0 +1,27 @@
+# Render deployment configuration
+version = "1"
+
+[[services]]
+type = "web"
+name = "dvslot-backend"
+runtime = "node"
+buildCommand = "npm install"
+startCommand = "npm start"
+plan = "starter" # Free tier
+
+[services.env]
+NODE_ENV = "production"
+SUPABASE_URL = "https://woyivlvtvfwrnlbwydhr.supabase.co"
+SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndveWl2bHZ0dmZ3cm5sYnd5ZGhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNjU1OTU5MywiZXhwIjoyMDUyMTM1NTkzfQ.5e6gWIJUwKI8b0MwsPX2RCGuvEGEU6wJWz9PnYP8QTI"
+DVSA_BASE_URL = "https://www.gov.uk/book-driving-test"
+SCRAPING_DELAY_MIN = "8000"
+SCRAPING_DELAY_MAX = "20000"
+MAX_CONCURRENT_SCRAPERS = "1"
+SCRAPER_TIMEOUT = "90000"
+SCRAPE_INTERVAL_MINUTES = "45"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable"
+
+[[services.healthCheck]]
+path = "/health"
+port = 3001

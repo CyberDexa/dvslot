@@ -1,0 +1,37 @@
+# DVSlot Backend Docker Compose
+version: '3.8'
+
+services:
+  dvslot-backend:
+    build: .
+    container_name: dvslot-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - DVSA_BASE_URL=https://www.gov.uk/book-driving-test
+      - SCRAPING_DELAY_MIN=5000
+      - SCRAPING_DELAY_MAX=15000
+      - MAX_CONCURRENT_SCRAPERS=3
+      - SCRAPER_TIMEOUT=60000
+      - SCRAPE_INTERVAL_MINUTES=30
+      - LOG_LEVEL=info
+    volumes:
+      - ./logs:/app/logs
+      - /dev/shm:/dev/shm
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - dvslot-network
+
+networks:
+  dvslot-network:
+    driver: bridge

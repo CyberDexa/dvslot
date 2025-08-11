@@ -1,0 +1,32 @@
+{
+  "name": "dvslot-backend",
+  "version": "1.0.0",
+  "description": "DVSlot backend service with real DVSA integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "scrape": "node scripts/scrapeSlots.js",
+    "scheduler": "node workers/scheduler.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^24.16.0",
+    "node-cron": "^3.0.2",
+    "@supabase/supabase-js": "^2.38.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.8.1",
+    "winston": "^3.10.0",
+    "axios": "^1.5.0",
+    "cheerio": "^1.0.0-rc.12",
+    "user-agents": "^1.0.1274"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
