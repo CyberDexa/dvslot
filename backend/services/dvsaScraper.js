@@ -389,48 +389,132 @@ class DVSAScraperService {
       await this.initialize();
       
       const testCenters = await this.getTestCenters();
-      logger.info(`🎯 Starting DVSA scraping for ${testCenters.length} test centers`);
+      logger.info(`🎯 Starting COMPREHENSIVE DVSA scraping for ${testCenters.length} test centers`);
+      logger.info(`🗺️  Coverage: ALL UK regions (England, Scotland, Wales, N. Ireland)`);
 
       const results = [];
-      const batchSize = this.config.maxConcurrent;
+      const regionStats = {};
+      
+      // Enhanced configuration for 350+ centers
+      const batchSize = 2; // Smaller batches for stability with large dataset
+      const maxConcurrentPerBatch = 1; // Sequential processing for reliability
+      const delayBetweenCenters = 5000; // 5 second delay minimum
+      const delayBetweenBatches = 15000; // 15 second pause between batches
 
       for (let i = 0; i < testCenters.length; i += batchSize) {
         const batch = testCenters.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(testCenters.length / batchSize);
         
-        const batchPromises = batch.map(async (center) => {
-          const result = await this.scrapeTestCenter(center);
-          await this.randomDelay(this.config.delayMin, this.config.delayMax);
-          return result;
-        });
-
-        const batchResults = await Promise.all(batchPromises);
-        results.push(...batchResults);
-
-        logger.info(`📊 Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(testCenters.length / batchSize)} complete`);
+        logger.info(`🔄 Processing batch ${batchNumber}/${totalBatches} (Centers: ${batch.map(c => c.name).join(', ')})`);
         
-        // Delay between batches
+        // Process batch with enhanced error handling
+        for (const center of batch) {
+          try {
+            const result = await this.scrapeTestCenter(center);
+            results.push(result);
+            
+            // Track regional statistics
+            if (!regionStats[center.region]) {
+              regionStats[center.region] = { successful: 0, failed: 0, slots: 0 };
+            }
+            
+            if (result.success) {
+              regionStats[center.region].successful++;
+              regionStats[center.region].slots += result.slotsFound;
+              logger.info(`✅ ${center.name} (${center.region}): ${result.slotsFound} slots`);
+            } else {
+              regionStats[center.region].failed++;
+              logger.warn(`❌ ${center.name} (${center.region}): Failed - ${result.error}`);
+            }
+            
+            // Smart delay between centers
+            await this.randomDelay(delayBetweenCenters, delayBetweenCenters + 3000);
+            
+          } catch (error) {
+            logger.error(`💥 Critical error for ${center.name}:`, error.message);
+            
+            if (!regionStats[center.region]) {
+              regionStats[center.region] = { successful: 0, failed: 0, slots: 0 };
+            }
+            regionStats[center.region].failed++;
+            
+            results.push({
+              center: center.name,
+              region: center.region,
+              success: false,
+              slotsFound: 0,
+              error: error.message
+            });
+          }
+        }
+
+        // Progress update every 25 batches (roughly every 50 centers)
+        if (batchNumber % 25 === 0) {
+          const progress = Math.round((batchNumber / totalBatches) * 100);
+          const successfulSoFar = results.filter(r => r.success).length;
+          const totalSlotsSoFar = results.reduce((sum, r) => sum + r.slotsFound, 0);
+          
+          logger.info(`\n📊 PROGRESS UPDATE: ${progress}% Complete`);
+          logger.info(`   ✅ Successful: ${successfulSoFar} centers`);
+          logger.info(`   🎯 Slots found: ${totalSlotsSoFar}`);
+          logger.info(`   ⏰ Estimated completion: ${Math.round(((Date.now() - startTime) / batchNumber) * (totalBatches - batchNumber) / 60000)} min\n`);
+        }
+        
+        // Enhanced delay between batches (longer for large remaining work)
         if (i + batchSize < testCenters.length) {
-          await this.randomDelay(10000, 20000);
+          const remainingBatches = totalBatches - batchNumber;
+          const pauseTime = remainingBatches > 100 ? 20000 : // 20s for lots of work remaining
+                           remainingBatches > 50 ? 15000 :   // 15s for medium work
+                           10000;                             // 10s for final stretch
+          
+          logger.debug(`⏱️  Batch pause: ${pauseTime/1000}s (${remainingBatches} batches remaining)`);
+          await this.randomDelay(pauseTime, pauseTime + 5000);
         }
       }
 
       const totalSlots = results.reduce((sum, result) => sum + result.slotsFound, 0);
       const successfulScrapes = results.filter(r => r.success).length;
+      const failedScrapes = results.filter(r => !r.success).length;
       const duration = Math.round((Date.now() - startTime) / 1000);
+      const durationMinutes = Math.round(duration / 60);
+      const avgSlotsPerCenter = successfulScrapes > 0 ? Math.round(totalSlots / successfulScrapes) : 0;
 
-      logger.info(`🎉 Scraping completed in ${duration}s: ${successfulScrapes}/${testCenters.length} centers, ${totalSlots} slots found`);
+      // Final comprehensive report
+      logger.info(`\n🎉 COMPREHENSIVE UK SCRAPING COMPLETED`);
+      logger.info(`=====================================`);
+      logger.info(`⏰ Total Duration: ${durationMinutes} minutes (${duration}s)`);
+      logger.info(`🏢 Total Centers: ${testCenters.length}`);
+      logger.info(`✅ Successful: ${successfulScrapes} centers`);
+      logger.info(`❌ Failed: ${failedScrapes} centers`);
+      logger.info(`📈 Success Rate: ${Math.round((successfulScrapes / testCenters.length) * 100)}%`);
+      logger.info(`🎯 Total Slots Found: ${totalSlots}`);
+      logger.info(`📊 Average Slots/Center: ${avgSlotsPerCenter}`);
+      
+      // Regional breakdown
+      logger.info(`\n📍 REGIONAL PERFORMANCE:`);
+      Object.entries(regionStats).forEach(([region, stats]) => {
+        const total = stats.successful + stats.failed;
+        const successRate = total > 0 ? Math.round((stats.successful / total) * 100) : 0;
+        logger.info(`   ${region}: ${stats.successful}/${total} centers (${successRate}%), ${stats.slots} slots`);
+      });
 
       return {
         success: true,
         totalCenters: testCenters.length,
         successfulScrapes,
+        failedScrapes,
+        successRate: Math.round((successfulScrapes / testCenters.length) * 100),
         totalSlotsFound: totalSlots,
+        avgSlotsPerCenter,
         duration,
+        durationMinutes,
+        regionStats,
         results
       };
 
     } catch (error) {
-      logger.error('❌ Scraping service error:', error);
+      logger.error('❌ Critical scraping service error:', error);
       throw error;
     } finally {
       this.isRunning = false;
