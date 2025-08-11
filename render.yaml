@@ -19,7 +19,7 @@ services:
       - key: SUPABASE_URL
         value: https://mrqwzdrdbdguuaarjkwh.supabase.co
       - key: SUPABASE_ANON_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NzU5MTIsImV4cCI6MjA3MDM1MTkxMn0.gqFf3XrSOx43xSp4evDA0sunxUTv7331s6WXbvzZbe4
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQzODQ2ODEsImV4cCI6MjA0OTk2MDY4MX0.T-n5m5tYhbIjxB5B1FILnFfz-jxNXUdPfzRo1HEZKMg
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
