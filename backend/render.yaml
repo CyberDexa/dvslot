@@ -1,27 +1,58 @@
-# Render deployment configuration
-version = "1"
-
-[[services]]
-type = "web"
-name = "dvslot-backend"
-runtime = "node"
-buildCommand = "npm install"
-startCommand = "npm start"
-plan = "starter" # Free tier
-
-[services.env]
-NODE_ENV = "production"
-SUPABASE_URL = "https://woyivlvtvfwrnlbwydhr.supabase.co"
-SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndveWl2bHZ0dmZ3cm5sYnd5ZGhyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNjU1OTU5MywiZXhwIjoyMDUyMTM1NTkzfQ.5e6gWIJUwKI8b0MwsPX2RCGuvEGEU6wJWz9PnYP8QTI"
-DVSA_BASE_URL = "https://www.gov.uk/book-driving-test"
-SCRAPING_DELAY_MIN = "8000"
-SCRAPING_DELAY_MAX = "20000"
-MAX_CONCURRENT_SCRAPERS = "1"
-SCRAPER_TIMEOUT = "90000"
-SCRAPE_INTERVAL_MINUTES = "45"
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
-PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable"
-
-[[services.healthCheck]]
-path = "/health"
-port = 3001
+services:
+  - type: web
+    name: dvslot-api
+    runtime: node
+    env: node
+    region: oregon
+    plan: free  # Free tier: 750 hours/month
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        value: https://mrqwzdrdbdguuaarjkwh.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NzU5MTIsImV4cCI6MjA3MDM1MTkxMn0.gqFf3XrSOx43xSp4evDA0sunxUTv7331s6WXbvzZbe4
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://dvs-lot.vercel.app
+      - key: SCRAPER_INTERVAL
+        value: "1800000"  # 30 minutes
+      - key: MAX_CONCURRENT_SCRAPERS
+        value: "3"  # Conservative for free tier
+      - key: RATE_LIMIT_REQUESTS
+        value: "100"  # Per 15 minutes
+      - key: LOG_LEVEL
+        value: info
+        
+    # Auto-deploy on git push
+    autoDeploy: true
+    
+    # Health check configuration
+    healthCheckPath: /health
+    
+    # Resource limits for free tier
+    disk:
+      name: dvslot-disk
+      size: 1GB
+      
+databases:
+  # Using Supabase (PostgreSQL) - already configured
+  # No additional database needed as we're using Supabase
+  
+# Static site for documentation (optional)
+  - type: static
+    name: dvslot-docs
+    staticPublishPath: ./docs
+    buildCommand: echo "Documentation site"
+    routes:
+      - type: redirect
+        source: /*
+        destination: https://dvs-lot.vercel.app

@@ -63,7 +63,7 @@ async function clearExistingData() {
     const { error } = await supabase
         .from('test_centers')
         .delete()
-        .neq('id', 'non_existent_id'); // Delete all records
+        .gte('id', ''); // Delete all records by using a condition that matches all
     
     if (error) {
         console.error('❌ Error clearing existing data:', error);
