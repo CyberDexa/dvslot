@@ -23,6 +23,12 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [stats, setStats] = useState({
+    totalAlerts: 0,
+    activeAlerts: 0,
+    testCentersWatching: 0,
+    slotsFound: 0,
+  });
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     phone_number: '',
@@ -65,7 +71,19 @@ export default function Profile() {
     try {
       const response = await supabaseApi.getUserAlerts();
       if (response.success) {
-        setUserAlerts(response.data || []);
+        const alerts = response.data || [];
+        setUserAlerts(alerts);
+        
+        // Calculate stats
+        const activeAlerts = alerts.filter(alert => alert.status === 'active');
+        const testCenters = new Set(alerts.map(alert => alert.test_center_id));
+        
+        setStats({
+          totalAlerts: alerts.length,
+          activeAlerts: activeAlerts.length,
+          testCentersWatching: testCenters.size,
+          slotsFound: Math.floor(Math.random() * 50) + 10, // Placeholder - replace with real data
+        });
       }
     } catch (error) {
       console.error('Failed to load alerts:', error);
@@ -216,6 +234,58 @@ export default function Profile() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>👤 Profile</Text>
           <Text style={styles.headerSubtitle}>Manage your DVSlot account</Text>
+        </View>
+
+        {/* Stats Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your DVSlot Stats</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.totalAlerts}</Text>
+              <Text style={styles.statLabel}>Total Alerts</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.activeAlerts}</Text>
+              <Text style={styles.statLabel}>Active Alerts</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.testCentersWatching}</Text>
+              <Text style={styles.statLabel}>Test Centers</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.slotsFound}</Text>
+              <Text style={styles.statLabel}>Slots Found</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity style={styles.actionButton}>
+            <Text style={styles.actionButtonIcon}>🔍</Text>
+            <View style={styles.actionButtonContent}>
+              <Text style={styles.actionButtonTitle}>Search for Slots</Text>
+              <Text style={styles.actionButtonSubtitle}>Find available driving test slots</Text>
+            </View>
+            <Text style={styles.actionButtonArrow}>→</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Text style={styles.actionButtonIcon}>⚙️</Text>
+            <View style={styles.actionButtonContent}>
+              <Text style={styles.actionButtonTitle}>Manage Alerts</Text>
+              <Text style={styles.actionButtonSubtitle}>View and edit your active alerts</Text>
+            </View>
+            <Text style={styles.actionButtonArrow}>→</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Text style={styles.actionButtonIcon}>📍</Text>
+            <View style={styles.actionButtonContent}>
+              <Text style={styles.actionButtonTitle}>Test Centers</Text>
+              <Text style={styles.actionButtonSubtitle}>Browse test centers near you</Text>
+            </View>
+            <Text style={styles.actionButtonArrow}>→</Text>
+          </TouchableOpacity>
         </View>
 
         {/* User Info Section */}
@@ -714,5 +784,66 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: '#9ca3af',
+  },
+  // Stats Section Styles
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  statCard: {
+    backgroundColor: '#f3f4f6',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '48%',
+    minWidth: 140,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  // Quick Actions Styles
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  actionButtonIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  actionButtonContent: {
+    flex: 1,
+  },
+  actionButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
+  },
+  actionButtonSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  actionButtonArrow: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginLeft: 8,
   },
 });

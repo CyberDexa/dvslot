@@ -4,9 +4,14 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+// Import web configuration for mobile responsiveness
+if (Platform.OS === 'web') {
+  require('@/utils/webConfig');
+}
 
 export {
   // Catch any errors thrown by the Layout component.

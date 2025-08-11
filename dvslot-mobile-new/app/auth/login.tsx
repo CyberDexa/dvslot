@@ -41,9 +41,8 @@ export default function Login() {
       const result = await authService.signIn(email, password);
       
       if (result.success) {
-        Alert.alert('Success', 'Logged in successfully!', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)') }
-        ]);
+        // Navigate immediately without alert delay
+        router.replace('/(tabs)');
       } else {
         Alert.alert('Login Failed', result.error || 'Please check your email and password');
       }
