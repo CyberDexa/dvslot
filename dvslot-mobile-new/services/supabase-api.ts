@@ -395,30 +395,35 @@ class DVSlotSupabaseAPI {
         };
       }
 
+      // First, try to get alerts directly without join since the relationship might not exist
       const { data, error } = await supabase
         .from('user_alerts')
-        .select(`
-          *,
-          test_centers (
-            name,
-            city,
-            region
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error('Supabase user_alerts error:', error);
         return {
           success: false,
           error: error.message,
         };
       }
 
+      // Transform to match expected format
+      const alerts: UserAlert[] = (data || []).map((alert: any) => ({
+        id: alert.alert_id?.toString() || alert.id?.toString() || '',
+        user_id: alert.user_id,
+        test_center_id: alert.subscription_id?.toString() || undefined,
+        status: 'active' as 'active', // Default since we don't have status field
+        created_at: alert.created_at,
+        updated_at: alert.created_at,
+      }));
+
       return {
         success: true,
-        data: data || [],
-        message: `Found ${data?.length || 0} alerts`,
+        data: alerts,
+        message: `Found ${alerts.length} alerts`,
       };
     } catch (error) {
       return {
