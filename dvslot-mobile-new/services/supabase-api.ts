@@ -395,7 +395,19 @@ class DVSlotSupabaseAPI {
         };
       }
 
-      // First, try to get alerts directly without join since the relationship might not exist
+      console.log('📧 Getting alerts for user:', user.id);
+      
+      // For now, return a fallback since the user_alerts table uses integer IDs 
+      // but Supabase Auth uses UUID strings - this is a schema mismatch
+      console.log('⚠️ Database schema mismatch: user_alerts.user_id is integer, but Supabase Auth uses UUID');
+      
+      return {
+        success: true,
+        data: [], // Return empty array until database schema is fixed
+        message: 'User alerts feature temporarily unavailable due to database schema mismatch'
+      };
+
+      /* Commented out until schema is fixed:
       const { data, error } = await supabase
         .from('user_alerts')
         .select('*')
@@ -425,6 +437,8 @@ class DVSlotSupabaseAPI {
         data: alerts,
         message: `Found ${alerts.length} alerts`,
       };
+      */
+      
     } catch (error) {
       return {
         success: false,

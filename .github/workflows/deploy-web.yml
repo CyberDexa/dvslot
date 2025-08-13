@@ -7,9 +7,18 @@ on:
       - 'dvslot-mobile-new/**'
   workflow_dispatch:
 
+# Add permissions for GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: Checkout
@@ -37,8 +46,8 @@ jobs:
         EXPO_PUBLIC_ENVIRONMENT: production
         
     - name: Deploy to GitHub Pages
+      id: deployment
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: dvslot-mobile-new/dist
-        cname: dvslot.pages.dev
