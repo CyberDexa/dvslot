@@ -1,0 +1,44 @@
+name: Deploy DVSlot Web to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'dvslot-mobile-new/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: dvslot-mobile-new/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: dvslot-mobile-new
+      run: npm ci
+      
+    - name: Build web app
+      working-directory: dvslot-mobile-new
+      run: npm run build:web
+      env:
+        EXPO_PUBLIC_SUPABASE_URL: https://mrqwzdrdbdguuaarjkwh.supabase.co
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NzU5MTIsImV4cCI6MjA3MDM1MTkxMn0.gqFf3XrSOx43xSp4evDA0sunxUTv7331s6WXbvzZbe4
+        EXPO_PUBLIC_API_BASE_URL: https://dvslot-api.onrender.com
+        EXPO_PUBLIC_WEB_URL: https://cyberdexa.github.io/dvslot
+        EXPO_PUBLIC_ENVIRONMENT: production
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: dvslot-mobile-new/dist
+        cname: dvslot.pages.dev
