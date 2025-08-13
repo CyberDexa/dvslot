@@ -4,6 +4,9 @@ import { platformStorage } from './storage';
 // Always reuse the shared Supabase client to avoid multiple auth clients on web
 const supabase = sharedSupabase;
 
+// API Configuration
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://dvslot-api.onrender.com';
+
 // Consider only slots updated within this window to reduce stale results
 const FRESHNESS_HOURS = 2;
 const freshnessIso = () => new Date(Date.now() - FRESHNESS_HOURS * 60 * 60 * 1000).toISOString();
@@ -133,9 +136,27 @@ class DVSlotProductionAPI {
   // Helper function to get coordinates from postcode
   private async getCoordinatesFromPostcode(postcode: string): Promise<{latitude: number, longitude: number} | null> {
     try {
-      // Use a free UK postcode API
-  const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
-  const response = await fetchWithTimeout(url, undefined, 8000, 'postcodes.io lookup');
+      // First try using our backend API as a proxy to bypass CSP issues
+      try {
+        const backendUrl = `${API_BASE_URL}/postcode/${encodeURIComponent(postcode)}`;
+        console.log('🔍 Trying backend postcode API:', backendUrl);
+        const response = await fetchWithTimeout(backendUrl, undefined, 8000, 'backend postcode lookup');
+        const data = await response.json();
+        
+        if (data.success && data.latitude && data.longitude) {
+          console.log('✅ Backend postcode lookup successful');
+          return {
+            latitude: data.latitude,
+            longitude: data.longitude
+          };
+        }
+      } catch (backendError) {
+        console.log('⚠️ Backend postcode lookup failed, trying direct API:', backendError);
+      }
+
+      // Fallback to direct postcodes.io API (may be blocked by CSP)
+      const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
+      const response = await fetchWithTimeout(url, undefined, 8000, 'postcodes.io lookup');
       const data = await response.json();
       
       if (data.status === 200 && data.result) {

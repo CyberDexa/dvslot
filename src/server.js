@@ -76,6 +76,36 @@ app.use('/api/v1/alerts', alertRoutes);
 app.use('/api/v1/test-centers', testCenterRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
 
+// Postcode lookup proxy to bypass CSP issues
+app.get('/postcode/:postcode', async (req, res) => {
+  try {
+    const { postcode } = req.params;
+    if (!postcode) {
+      return res.status(400).json({ success: false, error: 'Postcode required' });
+    }
+
+    // Fetch from postcodes.io API using axios
+    const axios = require('axios');
+    const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
+    const response = await axios.get(url, { timeout: 5000 });
+    const data = response.data;
+
+    if (data.status === 200 && data.result) {
+      res.json({
+        success: true,
+        latitude: data.result.latitude,
+        longitude: data.result.longitude,
+        postcode: data.result.postcode
+      });
+    } else {
+      res.status(404).json({ success: false, error: 'Postcode not found' });
+    }
+  } catch (error) {
+    logger.error('Postcode lookup error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
