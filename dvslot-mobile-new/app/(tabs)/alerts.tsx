@@ -12,12 +12,21 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService, AuthState } from '../../services/auth-supabase';
-import { supabaseApi, UserAlert } from '../../services/supabase-api';
+import { api } from '../../services/api';
+import { supabaseApi } from '../../services/supabase-api';
+
+type AlertItem = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  active: boolean;
+  createdAt?: string;
+};
 
 export default function Alerts() {
   const router = useRouter();
   const [authState, setAuthState] = useState<AuthState | null>(null);
-  const [userAlerts, setUserAlerts] = useState<UserAlert[]>([]);
+  const [userAlerts, setUserAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -44,10 +53,32 @@ export default function Alerts() {
 
   const loadUserAlerts = async () => {
     try {
-      const response = await supabaseApi.getUserAlerts();
-      if (response.success) {
-        setUserAlerts(response.data || []);
+      await api.restoreAuthFromStorage();
+      let loaded: AlertItem[] = [];
+      if ((api as any).authToken) {
+        const response = await api.getUserAlerts();
+        if (response.success && response.data) {
+          loaded = (response.data as any[]).map(a => ({
+            id: a.id,
+            title: a.title || 'DVSA Slot Alert',
+            subtitle: a.description,
+            active: !!a.isActive,
+            createdAt: a.created,
+          }));
+        }
+      } else {
+        const response = await supabaseApi.getUserAlerts();
+        if (response.success && response.data) {
+          loaded = (response.data as any[]).map((a: any) => ({
+            id: a.id,
+            title: a.test_centers?.name ? `Alert for ${a.test_centers.name}` : 'DVSA Slot Alert',
+            subtitle: [a.test_centers?.city, a.test_centers?.region].filter(Boolean).join(', '),
+            active: a.status === 'active',
+            createdAt: a.created_at,
+          }));
+        }
       }
+      setUserAlerts(loaded);
     } catch (error) {
       console.error('Failed to load alerts:', error);
     }
@@ -71,13 +102,17 @@ export default function Alerts() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const result = await supabaseApi.deleteUserAlert(alertId);
-            if (result.success) {
-              setUserAlerts(prev => prev.filter(alert => alert.id !== alertId));
-              Alert.alert('Success', 'Alert deleted successfully');
-            } else {
-              Alert.alert('Error', result.error || 'Failed to delete alert');
+            try {
+              await api.restoreAuthFromStorage();
+              if ((api as any).authToken) {
+                const res = await api.deleteSubscription(alertId);
+                if (!res.success) throw new Error(res.error || 'Failed to delete');
+              }
+            } catch (e) {
+              // ignore; we'll still remove locally
             }
+            setUserAlerts(prev => prev.filter(alert => alert.id !== alertId));
+            Alert.alert('Success', 'Alert deleted successfully');
           }
         }
       ]
@@ -87,7 +122,7 @@ export default function Alerts() {
   const toggleAlertStatus = async (alertId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     const actionText = newStatus === 'active' ? 'activate' : 'deactivate';
-    
+
     Alert.alert(
       `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Alert`,
       `Are you sure you want to ${actionText} this alert?`,
@@ -96,14 +131,14 @@ export default function Alerts() {
         {
           text: actionText.charAt(0).toUpperCase() + actionText.slice(1),
           onPress: async () => {
-            // For now, just update locally since we don't have the backend API
-            setUserAlerts(prev => 
-              prev.map(alert => 
-                alert.id === alertId 
-                  ? { ...alert, status: newStatus as 'active' | 'inactive' }
-                  : alert
-              )
-            );
+            try {
+              await api.restoreAuthFromStorage();
+              if ((api as any).authToken) {
+                const res = await api.updateAlert(alertId, { is_active: newStatus === 'active' } as any);
+                if (!res.success) throw new Error(res.error || 'Failed');
+              }
+            } catch {}
+            setUserAlerts(prev => prev.map(a => a.id === alertId ? { ...a, active: newStatus === 'active' } : a));
             Alert.alert('Success', `Alert ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
           }
         }
@@ -174,32 +209,42 @@ export default function Alerts() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🔔 Your Alerts</Text>
+          <Text style={styles.headerTitle}>
+            🔔 Your Alerts
+          </Text>
           <Text style={styles.headerSubtitle}>
             {userAlerts.length > 0 
               ? `Managing ${userAlerts.length} alert${userAlerts.length === 1 ? '' : 's'}`
               : 'No alerts set up yet'
             }
           </Text>
+          {!(api as any).authToken && (
+            <TouchableOpacity
+              style={[styles.ctaButton, { marginTop: 12, backgroundColor: '#1E3A8A' }]}
+              onPress={() => router.push('../auth/backend-login')}
+            >
+              <Text style={styles.ctaButtonText}>Connect Alerts Backend</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
-              {userAlerts.filter(alert => alert.status === 'active').length}
+              {userAlerts.filter(alert => alert.active).length}
             </Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
-              {userAlerts.filter(alert => alert.status === 'inactive').length}
+              {userAlerts.filter(alert => !alert.active).length}
             </Text>
             <Text style={styles.statLabel}>Inactive</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
-              {new Set(userAlerts.map(alert => alert.test_center_id)).size}
+              {userAlerts.length}
             </Text>
             <Text style={styles.statLabel}>Centers</Text>
           </View>
@@ -229,26 +274,26 @@ export default function Alerts() {
                 <View style={styles.alertHeader}>
                   <View style={styles.alertStatus}>
                     <Text style={styles.alertStatusIcon}>
-                      {alert.status === 'active' ? '🔔' : '⏸️'}
+                      {alert.active ? '🔔' : '⏸️'}
                     </Text>
                     <View style={styles.alertInfo}>
                       <Text style={styles.alertTitle}>Test Center Alert</Text>
                       <Text style={styles.alertSubtitle}>
-                        {alert.status === 'active' ? 'Actively monitoring' : 'Inactive'}
+                        {alert.active ? 'Actively monitoring' : 'Inactive'}
                       </Text>
                     </View>
                   </View>
                   
                   <View style={styles.alertActions}>
                     <TouchableOpacity
-                      onPress={() => toggleAlertStatus(alert.id, alert.status)}
+                      onPress={() => toggleAlertStatus(alert.id, alert.active ? 'active' : 'inactive')}
                       style={[
                         styles.actionButton,
-                        alert.status === 'active' ? styles.pauseButton : styles.activateButton
+                        alert.active ? styles.pauseButton : styles.activateButton
                       ]}
                     >
                       <Text style={styles.actionButtonText}>
-                        {alert.status === 'active' ? 'Deactivate' : 'Activate'}
+                        {alert.active ? 'Deactivate' : 'Activate'}
                       </Text>
                     </TouchableOpacity>
                     
@@ -263,14 +308,14 @@ export default function Alerts() {
                 
                 <View style={styles.alertDetails}>
                   <Text style={styles.alertDetailText}>
-                    📍 Test Center ID: {alert.test_center_id}
+                    � {alert.title}
                   </Text>
                   <Text style={styles.alertDetailText}>
-                    📅 Created: {new Date(alert.created_at).toLocaleDateString()}
+                    📅 Created: {alert.createdAt ? new Date(alert.createdAt).toLocaleDateString() : '—'}
                   </Text>
-                  {alert.updated_at && (
+          {false && (
                     <Text style={styles.alertDetailText}>
-                      🔄 Last updated: {new Date(alert.updated_at).toLocaleDateString()}
+            🔄 Last updated: —
                     </Text>
                   )}
                 </View>

@@ -189,11 +189,11 @@ export default function Home() {
               icon="🚀"
               onPress={() => {
                 // Test the live API connection
-                fetch('https://dvslot-api.onrender.com/api/test-centers?limit=1')
+                fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://dvslot-api.onrender.com'}/health`)
                   .then(response => response.json())
                   .then(data => {
-                    if (data.success) {
-                      alert(`🎉 Live connection verified! Found ${data.data?.length || 0} test centers. Your DVSlot app is ready!`);
+                    if (data.status || data.success) {
+                      alert(`🎉 Live connection verified! API status: ${data.status || 'ok'}. Your DVSlot app is ready!`);
                     } else {
                       alert('⚠️ API connection test completed - check network connectivity.');
                     }

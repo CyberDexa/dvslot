@@ -7,6 +7,32 @@ const supabase = sharedSupabase;
 // Consider only slots updated within this window to reduce stale results
 const FRESHNESS_HOURS = 2;
 const freshnessIso = () => new Date(Date.now() - FRESHNESS_HOURS * 60 * 60 * 1000).toISOString();
+const DEFAULT_TIMEOUT_MS = 12000; // 12s network guard on web
+
+function withTimeout<T>(promise: Promise<T>, ms = DEFAULT_TIMEOUT_MS, label = 'operation'): Promise<T> {
+  let timeoutId: any;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeout])
+    .finally(() => clearTimeout(timeoutId));
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, ms = DEFAULT_TIMEOUT_MS, label = 'fetch') {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(input, { ...(init || {}), signal: controller.signal });
+    return res;
+  } catch (e) {
+    console.error(`${label} error:`, e);
+    throw e;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -42,6 +68,7 @@ export interface TestSlot {
   available: boolean;
   last_checked: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface UserAlert {
@@ -107,8 +134,8 @@ class DVSlotProductionAPI {
   private async getCoordinatesFromPostcode(postcode: string): Promise<{latitude: number, longitude: number} | null> {
     try {
       // Use a free UK postcode API
-      const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
-      const response = await fetch(url);
+  const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
+  const response = await fetchWithTimeout(url, undefined, 8000, 'postcodes.io lookup');
       const data = await response.json();
       
       if (data.status === 200 && data.result) {
@@ -120,7 +147,7 @@ class DVSlotProductionAPI {
       // Fallback for some Scottish/Northern Ireland formats: try stripping spaces
       if (postcode.includes(' ')) {
         const compact = postcode.replace(/\s+/g, '');
-        const r2 = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(compact)}`);
+        const r2 = await fetchWithTimeout(`https://api.postcodes.io/postcodes/${encodeURIComponent(compact)}`, undefined, 6000, 'postcodes.io compact lookup');
         const d2 = await r2.json();
         if (d2.status === 200 && d2.result) {
           return { latitude: d2.result.latitude, longitude: d2.result.longitude };
@@ -266,7 +293,7 @@ class DVSlotProductionAPI {
         query = query.limit(filters.maxResults);
       }
 
-      const { data: centers, error } = await query;
+  const { data: centers, error } = await query;
 
       if (error) {
         console.error('Database query error:', error);
@@ -284,41 +311,65 @@ class DVSlotProductionAPI {
         };
       }
 
-      // Calculate distances and filter by radius
-      const centersWithDistance = centers
-        .map(center => {
-          const distance = this.calculateDistance(
-            coords.latitude, 
-            coords.longitude,
-            parseFloat(center.latitude as any), 
-            parseFloat(center.longitude as any)
-          );
+      // Calculate distances and filter by radius if coords found; otherwise return prefix-matched set without distance
+      let centersWithDistance: TestCenter[] = [];
 
-          return {
-            id: center.center_id.toString(),
-            center_code: center.center_code,
-            name: center.name,
-            address: center.address || '',
-            postcode: center.postcode,
-            city: center.city || '',
-            region: center.region || '',
-            coordinates: {
-              latitude: parseFloat(center.latitude as any),
-              longitude: parseFloat(center.longitude as any),
-            },
-            distance: Math.round(distance * 10) / 10, // Round to 1 decimal
-            availability: 0, // Will be filled by slot query
-            is_active: center.is_active,
-          } as TestCenter;
-        })
-  .filter(center => (center.distance ?? Infinity) <= filters.radius)
-        .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      if (coords) {
+        centersWithDistance = centers
+          .map((center: any) => {
+            const distance = this.calculateDistance(
+              coords.latitude,
+              coords.longitude,
+              parseFloat(center.latitude as any),
+              parseFloat(center.longitude as any)
+            );
+
+            return {
+              id: center.center_id.toString(),
+              center_code: center.center_code,
+              name: center.name,
+              address: center.address || '',
+              postcode: center.postcode,
+              city: center.city || '',
+              region: center.region || '',
+              coordinates: {
+                latitude: parseFloat(center.latitude as any),
+                longitude: parseFloat(center.longitude as any),
+              },
+              distance: Math.round(distance * 10) / 10,
+              availability: 0,
+              is_active: center.is_active,
+            } as TestCenter;
+          })
+          .filter((center: TestCenter) => (center.distance ?? Infinity) <= filters.radius)
+          .sort((a: TestCenter, b: TestCenter) => (a.distance || 0) - (b.distance || 0));
+      } else {
+        // Fallback: filter centers by postcode outward code prefix
+        const outward = (filters.postcode || '').trim().toUpperCase().split(' ')[0];
+        const filtered = (centers as any[]).filter(c => (c.postcode || '').toUpperCase().startsWith(outward));
+        centersWithDistance = (filtered.length ? filtered : centers).map((center: any) => ({
+          id: center.center_id.toString(),
+          center_code: center.center_code,
+          name: center.name,
+          address: center.address || '',
+          postcode: center.postcode,
+          city: center.city || '',
+          region: center.region || '',
+          coordinates: {
+            latitude: parseFloat(center.latitude as any),
+            longitude: parseFloat(center.longitude as any),
+          },
+          // distance unknown in fallback
+          availability: 0,
+          is_active: center.is_active,
+        }));
+      }
 
       // Get availability counts for these centers
       if (centersWithDistance.length > 0) {
         const centerIds = centersWithDistance.map(c => parseInt(c.id));
         
-        let slotQuery = supabase
+  let slotQuery = supabase
           .from('driving_test_slots')
           .select('center_id')
           .in('center_id', centerIds)
@@ -338,18 +389,18 @@ class DVSlotProductionAPI {
             .lte('date', filters.dateRange.end);
         }
 
-        const { data: slots } = await slotQuery;
+  const { data: slots } = await slotQuery;
 
         if (slots) {
           // Count slots per center
           const slotCounts: { [key: string]: number } = {};
-          slots.forEach(slot => {
+          slots.forEach((slot: any) => {
             const centerId = slot.center_id.toString();
             slotCounts[centerId] = (slotCounts[centerId] || 0) + 1;
           });
 
           // Update availability counts
-          centersWithDistance.forEach(center => {
+          centersWithDistance.forEach((center: any) => {
             center.availability = slotCounts[center.id] || 0;
           });
         }
@@ -455,7 +506,7 @@ class DVSlotProductionAPI {
       const centerIds = centersResponse.data.map(c => parseInt(c.id));
 
       // Query slots for these centers
-      let slotQuery = supabase
+  let slotQuery = supabase
         .from('driving_test_slots')
         .select(`
           slot_id,
@@ -465,7 +516,8 @@ class DVSlotProductionAPI {
           time,
           available,
           last_checked,
-          created_at
+          created_at,
+          updated_at
         `)
         .in('center_id', centerIds)
         .eq('available', true)
@@ -487,7 +539,7 @@ class DVSlotProductionAPI {
           .lte('date', filters.dateRange.end);
       }
 
-      const { data: slots, error } = await slotQuery;
+  const { data: slots, error } = await slotQuery;
 
       if (error) {
         console.error('Slots query error:', error);
@@ -508,7 +560,13 @@ class DVSlotProductionAPI {
       // Map center names to slots
       const centerMap = new Map(centersResponse.data.map(c => [parseInt(c.id), c.name]));
 
-      const testSlots: TestSlot[] = slots.map(slot => ({
+      const testSlots: TestSlot[] = (slots as any[])
+        // Extra client-side freshness guard in case some rows miss updated_at
+        .filter((s: any) => {
+          const updated = s.updated_at || s.last_checked || s.created_at;
+          return updated && new Date(updated) >= new Date(freshnessIso());
+        })
+        .map((slot: any) => ({
         id: slot.slot_id.toString(),
         center_id: slot.center_id.toString(),
         center_name: centerMap.get(slot.center_id) || 'Unknown Center',

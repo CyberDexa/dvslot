@@ -207,12 +207,12 @@ class AuthService {
 
   public async signOut(): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase.auth.signOut();
-      
+      const { error } = await supabase.auth.signOut({ scope: 'global' as any });
       if (error) {
         return { success: false, error: error.message };
       }
-
+      // Proactively clear local state in addition to auth listener
+      await this.clearAuthState();
       return { success: true };
     } catch (error) {
       console.error('Sign out error:', error);

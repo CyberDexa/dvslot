@@ -96,8 +96,10 @@ async function testMobileAppAPI() {
       .select('center_code, name, city, region, latitude, longitude')
       .eq('is_active', true);
 
+    // Hoist results to be used in final summary
+    let londonResults = [];
     if (nearbyLondonCenters) {
-      const londonResults = nearbyLondonCenters
+      londonResults = nearbyLondonCenters
         .map(center => ({
           ...center,
           distance: calculateDistance(londonLat, londonLng, center.latitude, center.longitude)

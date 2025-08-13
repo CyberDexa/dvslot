@@ -17,9 +17,32 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
+// CORS configuration
+const defaultAllowed = [
+  'http://localhost:19006', // Expo web default
+  'http://localhost:8081',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://dvslot.com',
+  'https://www.dvslot.com',
+  // Vercel preview/prod domains
+  'https://dvslot-web.vercel.app',
+  'https://*.vercel.app',
+];
+const allowedOrigins = (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : defaultAllowed).map(o => o.trim());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const ok = allowedOrigins.includes(origin)
+      || /\.vercel\.app$/i.test(origin)
+      || /localhost(:\d+)?$/i.test(origin)
+      || /127\.0\.0\.1(:\d+)?$/i.test(origin);
+    if (ok) return callback(null, true);
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
 }));
 
 // Rate limiting

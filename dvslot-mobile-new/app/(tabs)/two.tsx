@@ -11,8 +11,9 @@ import {
   ActivityIndicator,
   FlatList,
 } from 'react-native';
-import { api, TestCenter, TestSlot, SearchFilters } from '../../services/api';
+import { api } from '../../services/api';
 import { productionApi, TestCenter as ProductionTestCenter, TestSlot as ProductionTestSlot, SearchFilters as ProductionSearchFilters } from '../../services/productionApi';
+import { useRouter } from 'expo-router';
 
 interface SearchResult {
   testCenters: ProductionTestCenter[];
@@ -21,6 +22,7 @@ interface SearchResult {
 }
 
 export default function Search() {
+  const router = useRouter();
   const [postcode, setPostcode] = useState('');
   const [radius, setRadius] = useState(25);
   const [isSearching, setIsSearching] = useState(false);
@@ -98,6 +100,40 @@ export default function Search() {
       );
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleSetAlert = async (slot: ProductionTestSlot) => {
+    try {
+      await api.restoreAuthFromStorage();
+      if (!(api as any).authToken) {
+        Alert.alert(
+          'Connect Alerts',
+          'Sign in to the alerts backend to create and manage alerts.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Connect', onPress: () => router.push('../auth/backend-login') },
+          ]
+        );
+        return;
+      }
+      const payload = {
+        test_type: (slot.test_type as any) || 'practical',
+        location: (postcode || '').trim().toUpperCase(),
+        radius,
+        preferred_centers: slot.center_id ? [Number(slot.center_id)] : [],
+        date_from: slot.date,
+        date_to: slot.date,
+        preferred_times: slot.time ? [slot.time] : [],
+      } as any;
+      const res = await api.createAlert(payload);
+      if (res.success) {
+        Alert.alert('Alert Created', 'We will notify you when similar slots are detected.');
+      } else {
+        Alert.alert('Failed', res.error || 'Could not create alert');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Unexpected error while creating alert');
     }
   };
 
@@ -235,10 +271,7 @@ export default function Search() {
                     </View>
                     <TouchableOpacity 
                       style={styles.alertButton}
-                      onPress={() => Alert.alert(
-                        'Set Alert', 
-                        `Would you like to set up an alert for similar slots at ${slot.center_name}?`
-                      )}
+                      onPress={() => handleSetAlert(slot)}
                     >
                       <Text style={styles.alertButtonText}>🔔 Set Alert</Text>
                     </TouchableOpacity>

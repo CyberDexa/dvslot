@@ -1,9 +1,11 @@
 import Constants from 'expo-constants';
 import { productionApi } from './productionApi';
+import { platformStorage } from './storage';
 
-// DVSlot Production API Configuration
-const API_BASE_URL = 'https://mrqwzdrdbdguuaarjkwh.supabase.co';
-const API_VERSION = 'v1';
+// DVSlot Backend API Configuration (Render/Vercel)
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://dvslot-api.onrender.com';
+const API_VERSION = 'api/v1';
+const BACKEND_TOKEN_KEY = 'dvslot_backend_jwt';
 
 // Use production API with 318 UK centers
 const useProductionAPI = true;
@@ -97,10 +99,21 @@ class DVSlotAPI {
   // Authentication methods
   setAuthToken(token: string) {
     this.authToken = token;
+  try { platformStorage.setItem(BACKEND_TOKEN_KEY, token); } catch {}
   }
 
   clearAuthToken() {
     this.authToken = null;
+    try { platformStorage.removeItem(BACKEND_TOKEN_KEY); } catch {}
+  }
+
+  async restoreAuthFromStorage() {
+    try {
+      const token = await platformStorage.getItem(BACKEND_TOKEN_KEY);
+      if (token) {
+        this.authToken = token;
+      }
+    } catch {}
   }
 
   private async request<T>(
@@ -233,7 +246,7 @@ class DVSlotAPI {
   // Authentication endpoints - Development-friendly with fallbacks
   async login(email: string, password: string): Promise<ApiResponse<{ user: UserProfile; token: string }>> {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/login`, {
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +269,11 @@ class DVSlotAPI {
         };
       }
 
-      return {
+  // Persist token
+  const token = data?.data?.token || data.token;
+  if (token) this.setAuthToken(token);
+
+  return {
         success: true,
         data: data,
         message: 'Login successful',
@@ -265,7 +282,7 @@ class DVSlotAPI {
       console.error('Login error:', error);
       
       // Development fallback - return mock successful login
-      if (__DEV__ || this.baseUrl.includes('localhost') || this.baseUrl.includes('dvslot.com')) {
+  if (__DEV__ || this.baseUrl.includes('localhost') || this.baseUrl.includes('dvslot.com')) {
         console.log('🔧 Development mode: Using mock login response');
         const mockUser: UserProfile = {
           id: 'dev-user-123',
@@ -285,11 +302,13 @@ class DVSlotAPI {
           },
         };
 
-        return {
+    const token = 'dev-token-' + Date.now();
+    this.setAuthToken(token);
+    return {
           success: true,
           data: {
             user: mockUser,
-            token: 'dev-token-' + Date.now(),
+      token,
           },
           message: 'Development login successful',
         };
@@ -309,7 +328,7 @@ class DVSlotAPI {
     phone?: string;
   }): Promise<ApiResponse<{ user: UserProfile; token: string }>> {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/register`, {
+  const response = await fetch(`${this.baseUrl}/${this.apiVersion}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -332,7 +351,9 @@ class DVSlotAPI {
         };
       }
 
-      return {
+  const token = data?.data?.token || data.token;
+  if (token) this.setAuthToken(token);
+  return {
         success: true,
         data: data,
         message: 'Account created successfully',
@@ -361,11 +382,13 @@ class DVSlotAPI {
           },
         };
 
-        return {
+    const token = 'dev-token-' + Date.now();
+    this.setAuthToken(token);
+    return {
           success: true,
           data: {
             user: mockUser,
-            token: 'dev-token-' + Date.now(),
+      token,
           },
           message: 'Development account created successfully',
         };
@@ -381,7 +404,7 @@ class DVSlotAPI {
   async logout(): Promise<ApiResponse<void>> {
     try {
       if (this.authToken) {
-        await fetch(`${this.baseUrl}/auth/logout`, {
+  await fetch(`${this.baseUrl}/${this.apiVersion}/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${this.authToken}`,
@@ -544,7 +567,7 @@ class DVSlotAPI {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/user/profile`, {
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/users/me`, {
         headers: {
           'Authorization': `Bearer ${this.authToken}`,
           'Content-Type': 'application/json',
@@ -568,7 +591,7 @@ class DVSlotAPI {
 
       return {
         success: true,
-        data: data,
+        data: data?.data?.user || data.user || data,
         message: 'Profile retrieved successfully',
       };
     } catch (error) {
@@ -610,38 +633,6 @@ class DVSlotAPI {
   }
 
   async updateUserProfile(profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
-    // Always use development fallback for now to avoid JSON parsing issues
-    if (true) { // Development mode - always use mock data
-      console.log('🔧 Development mode: Using mock profile update response');
-      
-      // Simulate a successful profile update by merging the data
-      const mockUpdatedUser: UserProfile = {
-        id: 'dev-user-123',
-        name: profileData.name || 'Test User',
-        email: profileData.email || 'test@example.com',
-        phone: profileData.phone || '+44 7700 900123',
-        licenseNumber: profileData.licenseNumber || 'DEV851226AB9CD',
-        notificationSettings: {
-          pushNotifications: true,
-          emailNotifications: true,
-          smsNotifications: false,
-          ...(profileData.notificationSettings || {}),
-        },
-        preferredTestCenters: profileData.preferredTestCenters || ['Birmingham', 'London'],
-        subscription: {
-          type: 'premium',
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          ...(profileData.subscription || {}),
-        },
-      };
-
-      return {
-        success: true,
-        data: mockUpdatedUser,
-        message: 'Development profile updated successfully',
-      };
-    }
-
     try {
       if (!this.authToken) {
         return {
@@ -650,7 +641,7 @@ class DVSlotAPI {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/user/profile`, {
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/users/me`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${this.authToken}`,
@@ -676,7 +667,7 @@ class DVSlotAPI {
 
       return {
         success: true,
-        data: data,
+        data: data?.data?.user || data.user || data,
         message: 'Profile updated successfully',
       };
     } catch (error) {
@@ -691,41 +682,6 @@ class DVSlotAPI {
 
   // Alert endpoints
   async getUserAlerts(): Promise<ApiResponse<UserAlert[]>> {
-    // Always use development fallback for now to avoid JSON parsing issues
-    if (true) { // Development mode - always use mock data
-      console.log('🔧 Development mode: Using mock alerts response');
-      const mockAlerts: UserAlert[] = [
-        {
-          id: 'alert-1',
-          type: 'new_slot',
-          title: 'New Test Slot Available',
-          description: 'A new driving test slot is available at Birmingham Test Centre for March 15, 2025',
-          isActive: true,
-          created: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-          centerId: 'birmingham-south',
-          dateRange: {
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          },
-        },
-        {
-          id: 'alert-2',
-          type: 'cancellation',
-          title: 'Earlier Slot Available',
-          description: 'A cancellation has created an earlier slot at London Test Centre for March 8, 2025',
-          isActive: true,
-          created: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-          centerId: 'london-central',
-        },
-      ];
-
-      return {
-        success: true,
-        data: mockAlerts,
-        message: 'Development alerts retrieved successfully',
-      };
-    }
-
     try {
       if (!this.authToken) {
         return {
@@ -734,7 +690,8 @@ class DVSlotAPI {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/user/alerts`, {
+      // Backend: GET /api/v1/alerts/history
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/alerts/history`, {
         headers: {
           'Authorization': `Bearer ${this.authToken}`,
           'Content-Type': 'application/json',
@@ -752,13 +709,23 @@ class DVSlotAPI {
       if (!response.ok) {
         return {
           success: false,
-          error: data.message || 'Failed to get alerts',
+          error: data.error?.message || data.message || 'Failed to get alerts',
         };
       }
 
+      const alerts = (data.data?.alerts || data.alerts || []).map((a: any) => ({
+        id: a.alert_id || a.id,
+        type: a.type || 'new_slot',
+        title: a.center_name ? `Slot at ${a.center_name}` : 'DVSA Slot Alert',
+        description: `${a.center_name || ''} ${a.postcode || ''} ${a.date || ''} ${a.time || ''}`.trim(),
+        isActive: a.sent ? false : true,
+        created: a.created_at,
+        centerId: a.center_id?.toString(),
+      })) as UserAlert[];
+
       return {
         success: true,
-        data: data,
+        data: alerts,
         message: 'Alerts retrieved successfully',
       };
     } catch (error) {
@@ -771,59 +738,71 @@ class DVSlotAPI {
     }
   }
 
-  async createAlert(alertData: {
-    type: 'new_slot' | 'cancellation' | 'price_drop';
-    centerId?: string;
-    postcode?: string;
-    radius?: number;
-    dateRange?: { start: string; end: string };
-    notificationMethods: string[];
-  }): Promise<ApiResponse<UserAlert>> {
+  // Alert subscriptions (manage active rules)
+  async getAlertSubscriptions(): Promise<ApiResponse<any[]>> {
     try {
-      // Development fallback
-      if (__DEV__ || this.baseUrl.includes('localhost') || this.baseUrl.includes('dvslot.com')) {
-        console.log('🔧 Development mode: Using mock create alert response');
-        const mockAlert: UserAlert = {
-          id: 'alert-' + Date.now(),
-          type: alertData.type,
-          title: `${alertData.type.replace('_', ' ')} Alert Created`,
-          description: `Alert for ${alertData.postcode || alertData.centerId || 'test centers'}`,
-          isActive: true,
-          created: new Date().toISOString(),
-          centerId: alertData.centerId,
-          dateRange: alertData.dateRange,
-        };
-
-        return {
-          success: true,
-          data: mockAlert,
-          message: 'Alert created successfully',
-        };
+      if (!this.authToken) {
+        return { success: false, error: 'Authentication required' };
       }
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/alerts/subscriptions`, {
+        headers: {
+          'Authorization': `Bearer ${this.authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data?.error?.message || data.message || 'Failed to get subscriptions' };
+      }
+      const list = data?.data?.subscriptions || data.subscriptions || [];
+      return { success: true, data: list };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
 
-      return this.request('/user/alerts', {
+  async createAlert(alertData: {
+    test_type: 'practical' | 'theory' | 'both';
+    location: string; // postcode or city
+    radius?: number;
+    preferred_centers?: number[];
+    date_from?: string;
+    date_to?: string;
+    preferred_times?: string[];
+  }): Promise<ApiResponse<any>> {
+    try {
+      if (!this.authToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+      return this.request(`/alerts/subscribe`, {
         method: 'POST',
+        headers: { 'Authorization': `Bearer ${this.authToken}` },
         body: JSON.stringify(alertData),
       });
     } catch (error) {
       console.error('Create alert error:', error);
-      return {
-        success: false,
-        error: 'Failed to create alert',
-      };
+      return { success: false, error: 'Failed to create alert' };
     }
   }
 
   async updateAlert(id: string, alertData: Partial<UserAlert>): Promise<ApiResponse<UserAlert>> {
-    return this.request(`/user/alerts/${id}`, {
+    if (!this.authToken) return { success: false, error: 'Authentication required' } as any;
+    return this.request(`/alerts/subscriptions/${id}`, {
       method: 'PUT',
+      headers: { 'Authorization': `Bearer ${this.authToken}` },
       body: JSON.stringify(alertData),
     });
   }
 
-  async deleteAlert(id: string): Promise<ApiResponse<void>> {
-    return this.request(`/user/alerts/${id}`, {
+  async deleteSubscription(subscriptionId: string): Promise<ApiResponse<void>> {
+    if (!this.authToken) return { success: false, error: 'Authentication required' };
+    return this.request(`/alerts/subscriptions/${subscriptionId}`, {
       method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${this.authToken}` },
     });
   }
 
@@ -834,7 +813,15 @@ class DVSlotAPI {
     slotsFound: number;
     lastActivity: string;
   }>> {
-    return this.request('/user/statistics');
+    if (!this.authToken) return { success: false, error: 'Authentication required' } as any;
+    const res = await this.request<{ statistics: any }>(`/alerts/stats`, {
+      headers: { 'Authorization': `Bearer ${this.authToken}` },
+    });
+    if (res.success && res.data && (res as any).data.statistics) {
+      // Normalize
+      return { success: true, data: (res as any).data.statistics } as any;
+    }
+    return res as any;
   }
 
   // Support endpoints
@@ -851,7 +838,13 @@ class DVSlotAPI {
 
   // Health check
   async healthCheck(): Promise<ApiResponse<{ status: string; timestamp: string }>> {
-    return this.request('/health');
+    try {
+      const response = await fetch(`${this.baseUrl}/health`);
+      const data = await response.json();
+      return { success: true, data };
+    } catch (e) {
+      return { success: false, error: 'Health check failed' };
+    }
   }
 }
 

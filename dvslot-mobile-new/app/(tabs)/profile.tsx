@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService, AuthState, UserProfile } from '../../services/auth-supabase';
+import { api } from '../../services/api';
+import { supabaseApi } from '../../services/supabase-api';
 import { shadowPresets } from '../../utils/shadows';
 
 // Mock alert type for now - replace with actual when alerts are implemented
@@ -76,23 +78,39 @@ export default function Profile() {
 
   const loadUserAlerts = async () => {
     try {
-      // TODO: Replace with actual API call when alert system is implemented
-      // const response = await productionApi.getUserAlerts();
-      
-      // Mock alerts for demo purposes
-      const alerts: UserAlert[] = [];
-      
+      await api.restoreAuthFromStorage();
+      let alerts: UserAlert[] = [];
+      if ((api as any).authToken) {
+        const res = await api.getUserAlerts();
+        if (res.success && res.data) {
+          alerts = (res.data as any[]).map(a => ({
+            id: a.id,
+            status: a.isActive ? 'active' : 'inactive',
+            test_center_id: a.centerId,
+            created_at: a.created || new Date().toISOString(),
+          }));
+        }
+      } else {
+        const res = await supabaseApi.getUserAlerts();
+        if (res.success && res.data) {
+          alerts = (res.data as any[]).map((a: any) => ({
+            id: a.id,
+            status: a.status,
+            test_center_id: a.test_center_id,
+            created_at: a.created_at,
+          }));
+        }
+      }
+
       setUserAlerts(alerts);
-      
-      // Calculate stats
+
       const activeAlerts = alerts.filter((alert: UserAlert) => alert.status === 'active');
-      const testCenters = new Set(alerts.map((alert: UserAlert) => alert.test_center_id));
-      
+      const testCenters = new Set(alerts.map((alert: UserAlert) => alert.test_center_id).filter(Boolean));
       setStats({
         totalAlerts: alerts.length,
         activeAlerts: activeAlerts.length,
         testCentersWatching: testCenters.size,
-        slotsFound: Math.floor(Math.random() * 50) + 10, // Placeholder - replace with real data
+        slotsFound: Math.floor(Math.random() * 50) + 10,
       });
     } catch (error) {
       console.error('Failed to load alerts:', error);
