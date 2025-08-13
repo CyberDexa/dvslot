@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
+import { supabase as sharedSupabase } from './supabase';
+import { platformStorage } from './storage';
 
 // Production Supabase Configuration
 const SUPABASE_URL = 'https://mrqwzdrdbdguuaarjkwh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMzMTc3NTIsImV4cCI6MjAzODg5Mzc1Mn0.hQ4azGJRNB4wG4nJl3hk_k8YT8Ea0JxOtXJOlWg2NUI';
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize or reuse Supabase client to avoid multiple auth clients on web
+const supabase = sharedSupabase ?? createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -108,7 +110,8 @@ class DVSlotProductionAPI {
   private async getCoordinatesFromPostcode(postcode: string): Promise<{latitude: number, longitude: number} | null> {
     try {
       // Use a free UK postcode API
-      const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`);
+      const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
+      const response = await fetch(url);
       const data = await response.json();
       
       if (data.status === 200 && data.result) {
@@ -116,6 +119,15 @@ class DVSlotProductionAPI {
           latitude: data.result.latitude,
           longitude: data.result.longitude
         };
+      }
+      // Fallback for some Scottish/Northern Ireland formats: try stripping spaces
+      if (postcode.includes(' ')) {
+        const compact = postcode.replace(/\s+/g, '');
+        const r2 = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(compact)}`);
+        const d2 = await r2.json();
+        if (d2.status === 200 && d2.result) {
+          return { latitude: d2.result.latitude, longitude: d2.result.longitude };
+        }
       }
     } catch (error) {
       console.error('Postcode lookup error:', error);
@@ -201,8 +213,13 @@ class DVSlotProductionAPI {
 
   async logout(): Promise<ApiResponse<void>> {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      // Clear any cached profile
+      try { await platformStorage.multiRemove(['dvslot_user_profile']); } catch {}
       this.currentUser = null;
+      if (error) {
+        return { success: false, error: error.message };
+      }
       return {
         success: true,
         message: 'Logged out successfully',
@@ -297,7 +314,7 @@ class DVSlotProductionAPI {
             is_active: center.is_active,
           } as TestCenter;
         })
-        .filter(center => center.distance <= filters.radius)
+  .filter(center => (center.distance ?? Infinity) <= filters.radius)
         .sort((a, b) => (a.distance || 0) - (b.distance || 0));
 
       // Get availability counts for these centers
