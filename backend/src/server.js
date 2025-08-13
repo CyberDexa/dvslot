@@ -53,6 +53,22 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Root route handler to prevent 404 errors
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: 'DVSlot API Server',
+        status: 'running',
+        version: '1.0.0',
+        endpoints: {
+            health: '/health',
+            testCenters: '/api/test-centers',
+            testConnection: '/api/test-connection',
+            debug: '/api/debug'
+        },
+        docs: 'Visit /health for server status'
+    });
+});
+
 // Test Supabase connection with simpler query
 app.get('/api/test-connection', async (req, res) => {
     try {
@@ -233,8 +249,11 @@ app.use((error, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 DVSlot API running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-    console.log(`📱 CORS enabled for: ${process.env.CORS_ORIGIN}`);
+    console.log(`📱 CORS enabled for: ${process.env.CORS_ORIGIN || 'https://dvs-lot.vercel.app (default)'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    console.log(`📊 Root endpoint: http://localhost:${PORT}/`);
+    console.log(`🗄️ Database URL: ${process.env.SUPABASE_URL ? 'Configured' : 'Not configured'}`);
+    console.log(`🔑 API Key: ${process.env.SUPABASE_ANON_KEY ? 'Configured (' + process.env.SUPABASE_ANON_KEY.length + ' chars)' : 'Not configured'}`);
 });
 
 // Graceful shutdown
