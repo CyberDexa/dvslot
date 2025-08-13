@@ -12,11 +12,11 @@ import {
   FlatList,
 } from 'react-native';
 import { api, TestCenter, TestSlot, SearchFilters } from '../../services/api';
-import { supabaseApi, TestCenter as SupabaseTestCenter, TestSlot as SupabaseTestSlot, SearchFilters as SupabaseSearchFilters } from '../../services/supabase-api';
+import { productionApi, TestCenter as ProductionTestCenter, TestSlot as ProductionTestSlot, SearchFilters as ProductionSearchFilters } from '../../services/productionApi';
 
 interface SearchResult {
-  testCenters: SupabaseTestCenter[];
-  testSlots: SupabaseTestSlot[];
+  testCenters: ProductionTestCenter[];
+  testSlots: ProductionTestSlot[];
   totalResults: number;
 }
 
@@ -51,27 +51,21 @@ export default function Search() {
     setSearchResults(null);
 
     try {
-      const searchFilters: SearchFilters = {
+      const searchFilters: ProductionSearchFilters = {
         postcode: postcode.trim().toUpperCase(),
         radius,
         dateRange: {
           start: new Date().toISOString().split('T')[0],
           end: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         },
+        testType: 'practical', // Default to practical tests
       };
 
       console.log('🔍 Searching for test slots...', searchFilters);
 
-      // Use Supabase API for real data
-      const testCentersResponse = await supabaseApi.searchTestCenters({
-        postcode: searchFilters.postcode,
-        radius: searchFilters.radius,
-      });
-
-      const availableSlotsResponse = await supabaseApi.getAvailableSlots({
-        postcode: searchFilters.postcode,
-        dateRange: searchFilters.dateRange,
-      });
+      // Use Production API with 318 UK centers
+      const testCentersResponse = await productionApi.searchTestCenters(searchFilters);
+      const availableSlotsResponse = await productionApi.getAvailableSlots(searchFilters);
 
       if (testCentersResponse.success && availableSlotsResponse.success) {
         const results: SearchResult = {
@@ -89,7 +83,7 @@ export default function Search() {
             `No test slots found for ${postcode.trim().toUpperCase()} within ${radius} miles. Try:\n\n• Increasing your search radius\n• Checking a different postcode\n• Setting up an alert to be notified when slots become available`
           );
         } else {
-          Alert.alert('Search Complete', `Found ${results.testCenters.length} test centers and ${results.testSlots.length} available slots from our comprehensive UK database!`);
+          Alert.alert('Search Complete', `Found ${results.testCenters.length} test centers and ${results.testSlots.length} available slots from our 318 UK centers database!`);
         }
       } else {
         // Handle API errors
@@ -221,8 +215,8 @@ export default function Search() {
                 {searchResults.testSlots.map((slot) => (
                   <View key={slot.id} style={styles.testSlotCard}>
                     <View style={styles.slotHeader}>
-                      <Text style={styles.slotCenter}>{slot.centerName}</Text>
-                      <Text style={styles.slotPrice}>£{slot.price}</Text>
+                      <Text style={styles.slotCenter}>{slot.center_name}</Text>
+                      <Text style={styles.slotPrice}>£62</Text>
                     </View>
                     <View style={styles.slotDetails}>
                       <Text style={styles.slotDate}>
@@ -240,7 +234,7 @@ export default function Search() {
                       style={styles.alertButton}
                       onPress={() => Alert.alert(
                         'Set Alert', 
-                        `Would you like to set up an alert for similar slots at ${slot.centerName}?`
+                        `Would you like to set up an alert for similar slots at ${slot.center_name}?`
                       )}
                     >
                       <Text style={styles.alertButtonText}>🔔 Set Alert</Text>

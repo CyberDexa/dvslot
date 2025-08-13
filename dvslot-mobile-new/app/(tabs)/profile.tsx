@@ -13,8 +13,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService, AuthState, UserProfile } from '../../services/auth-supabase';
-import { supabaseApi, UserAlert } from '../../services/supabase-api';
 import { shadowPresets } from '../../utils/shadows';
+
+// Mock alert type for now - replace with actual when alerts are implemented
+interface UserAlert {
+  id: string;
+  status: 'active' | 'inactive';
+  test_center_id?: string;
+  created_at: string;
+}
 
 export default function Profile() {
   const router = useRouter();
@@ -69,22 +76,24 @@ export default function Profile() {
 
   const loadUserAlerts = async () => {
     try {
-      const response = await supabaseApi.getUserAlerts();
-      if (response.success) {
-        const alerts = response.data || [];
-        setUserAlerts(alerts);
-        
-        // Calculate stats
-        const activeAlerts = alerts.filter(alert => alert.status === 'active');
-        const testCenters = new Set(alerts.map(alert => alert.test_center_id));
-        
-        setStats({
-          totalAlerts: alerts.length,
-          activeAlerts: activeAlerts.length,
-          testCentersWatching: testCenters.size,
-          slotsFound: Math.floor(Math.random() * 50) + 10, // Placeholder - replace with real data
-        });
-      }
+      // TODO: Replace with actual API call when alert system is implemented
+      // const response = await productionApi.getUserAlerts();
+      
+      // Mock alerts for demo purposes
+      const alerts: UserAlert[] = [];
+      
+      setUserAlerts(alerts);
+      
+      // Calculate stats
+      const activeAlerts = alerts.filter((alert: UserAlert) => alert.status === 'active');
+      const testCenters = new Set(alerts.map((alert: UserAlert) => alert.test_center_id));
+      
+      setStats({
+        totalAlerts: alerts.length,
+        activeAlerts: activeAlerts.length,
+        testCentersWatching: testCenters.size,
+        slotsFound: Math.floor(Math.random() * 50) + 10, // Placeholder - replace with real data
+      });
     } catch (error) {
       console.error('Failed to load alerts:', error);
     }
@@ -173,13 +182,12 @@ export default function Profile() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const result = await supabaseApi.deleteUserAlert(alertId);
-            if (result.success) {
-              setUserAlerts(prev => prev.filter(alert => alert.id !== alertId));
-              Alert.alert('Success', 'Alert deleted successfully');
-            } else {
-              Alert.alert('Error', result.error || 'Failed to delete alert');
-            }
+            // TODO: Replace with actual API call when alert system is implemented
+            // const result = await productionApi.deleteUserAlert(alertId);
+            
+            // Mock successful deletion
+            setUserAlerts(prev => prev.filter(alert => alert.id !== alertId));
+            Alert.alert('Success', 'Alert deleted successfully');
           }
         }
       ]

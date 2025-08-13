@@ -10,7 +10,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Production Supabase Configuration (same as mobile app)
 const SUPABASE_URL = 'https://mrqwzdrdbdguuaarjkwh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMzMTc3NTIsImV4cCI6MjAzODg5Mzc1Mn0.hQ4azGJRNB4wG4nJl3hk_k8YT8Ea0JxOlWg2NUI';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NzU5MTIsImV4cCI6MjA3MDM1MTkxMn0.gqFf3XrSOx43xSp4evDA0sunxUTv7331s6WXbvzZbe4';
 
 async function testMobileAppAPI() {
   console.log('📱 DVSlot Mobile App API Test');
@@ -140,7 +140,13 @@ async function testMobileAppAPI() {
     const realTimeReady = slotCount > 0;
     console.log(`${realTimeReady ? '✅' : '❌'} Real-time slot availability`);
 
-    // Feature 3: Regional coverage
+    // Feature 3: Regional coverage (use regions data from earlier)
+    const regionCounts = {};
+    if (regions) {
+      regions.forEach(center => {
+        regionCounts[center.region] = (regionCounts[center.region] || 0) + 1;
+      });
+    }
     const regionalReady = Object.keys(regionCounts).length >= 10;
     console.log(`${regionalReady ? '✅' : '❌'} Complete UK regional coverage`);
 
