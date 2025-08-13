@@ -1,13 +1,12 @@
 import Constants from 'expo-constants';
+import { productionApi } from './productionApi';
 
-// DVSA Real API Configuration
-const DVSA_API_BASE_URL = 'https://www.gov.uk/api/driving-test';
-const DVSA_BOOKING_API = 'https://driverpracticaltest.dvsa.gov.uk/api';
-const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || DVSA_API_BASE_URL;
-const API_VERSION = process.env.EXPO_PUBLIC_API_VERSION || 'v1';
+// DVSlot Production API Configuration
+const API_BASE_URL = 'https://mrqwzdrdbdguuaarjkwh.supabase.co';
+const API_VERSION = 'v1';
 
-// Remove development mode detection - always use real API
-const useRealAPI = true;
+// Use production API with 318 UK centers
+const useProductionAPI = true;
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -36,7 +35,7 @@ export interface TestSlot {
   centerName: string;
   date: string;
   time: string;
-  type: 'standard' | 'intensive';
+  type: 'practical' | 'theory';
   price: number;
   available: boolean;
   lastUpdated: string;
@@ -81,7 +80,7 @@ export interface SearchFilters {
     start: string;
     end: string;
   };
-  testType?: 'standard' | 'intensive';
+  testType?: 'practical' | 'theory';
   automaticOnly?: boolean;
 }
 
@@ -403,57 +402,51 @@ class DVSlotAPI {
     };
   }
 
-  // Test center endpoints - Real DVSA Integration
+  // Test center endpoints - Production API with 318 UK centers
   async searchTestCenters(filters: SearchFilters): Promise<ApiResponse<TestCenter[]>> {
     try {
-      console.log(`🔍 Searching DVSA test centers near ${filters.postcode} within ${filters.radius} miles`);
+      console.log(`🔍 Searching production database: 318 UK centers near ${filters.postcode}`);
       
-      const testCenters = await this.searchDVSATestCenters(filters.postcode, filters.radius);
-      
-      // Get availability for each center
-      if (testCenters.length > 0) {
-        const centreIds = testCenters.map(center => center.id);
-        const availableSlots = await this.getDVSAAvailableSlots(centreIds);
-        
-        // Update availability counts
-        testCenters.forEach(center => {
-          center.availability = availableSlots.filter(slot => slot.centerId === center.id).length;
-        });
-        
-        // Apply additional filters
-        let filteredCenters = testCenters;
-        
-        if (filters.dateRange) {
-          const startDate = new Date(filters.dateRange.start);
-          const endDate = new Date(filters.dateRange.end);
-          
-          filteredCenters = testCenters.filter(center => {
-            const centerSlots = availableSlots.filter(slot => slot.centerId === center.id);
-            return centerSlots.some(slot => {
-              const slotDate = new Date(slot.date);
-              return slotDate >= startDate && slotDate <= endDate;
-            });
-          });
-        }
-        
+      // Use production API with our 318 centers database
+      const response = await productionApi.searchTestCenters({
+        postcode: filters.postcode,
+        radius: filters.radius,
+        dateRange: filters.dateRange,
+        testType: filters.testType,
+        maxResults: 50,
+      });
+
+      if (response.success && response.data) {
+        // Map to expected format
+        const mappedCenters: TestCenter[] = response.data.map(center => ({
+          id: center.center_code || center.id,
+          name: center.name,
+          address: center.address,
+          postcode: center.postcode,
+          city: center.city,
+          coordinates: center.coordinates,
+          availability: center.availability,
+          distance: center.distance,
+        }));
+
         return {
           success: true,
-          data: filteredCenters,
-          message: `Found ${filteredCenters.length} DVSA test centers within ${filters.radius} miles of ${filters.postcode}`,
+          data: mappedCenters,
+          message: response.message || `Found ${mappedCenters.length} centers from production database`,
         };
       }
 
       return {
-        success: true,
+        success: false,
+        error: response.error || 'Failed to search test centers',
         data: [],
-        message: `No DVSA test centers found within ${filters.radius} miles of ${filters.postcode}`,
       };
     } catch (error) {
-      console.error('❌ DVSA test center search error:', error);
+      console.error('❌ Production API search error:', error);
       return {
         success: false,
         data: [],
-        message: 'Failed to search DVSA test centers. Please check your connection and try again.',
+        error: 'Failed to search test centers. Please check your connection.',
       };
     }
   }
@@ -476,54 +469,51 @@ class DVSlotAPI {
     return this.request(`/test-centers/nearby?${params.toString()}`);
   }
 
-  // Test slot endpoints - Real DVSA Integration
+  // Test slot endpoints - Production API with 318 UK centers
   async searchTestSlots(filters: SearchFilters): Promise<ApiResponse<TestSlot[]>> {
     try {
-      console.log(`🎯 Searching DVSA test slots near ${filters.postcode}`);
+      console.log(`🎯 Searching production database slots near ${filters.postcode}`);
       
-      // First get test centers
-      const testCenters = await this.searchDVSATestCenters(filters.postcode, filters.radius);
-      
-      if (testCenters.length === 0) {
+      // Use production API
+      const response = await productionApi.searchTestSlots({
+        postcode: filters.postcode,
+        radius: filters.radius,
+        dateRange: filters.dateRange,
+        testType: filters.testType,
+      });
+
+      if (response.success && response.data) {
+        // Map to expected format
+        const mappedSlots: TestSlot[] = response.data.map(slot => ({
+          id: slot.id,
+          centerId: slot.center_id,
+          centerName: slot.center_name,
+          date: slot.date,
+          time: slot.time,
+          type: slot.test_type,
+          price: 62, // Standard DVSA test price
+          available: slot.available,
+          lastUpdated: slot.last_checked,
+        }));
+
         return {
           success: true,
-          data: [],
-          message: 'No test centers found in your area.',
+          data: mappedSlots,
+          message: response.message || `Found ${mappedSlots.length} available slots`,
         };
-      }
-      
-      // Get available slots from DVSA
-      const centreIds = testCenters.map(center => center.id);
-      let availableSlots = await this.getDVSAAvailableSlots(centreIds);
-      
-      // Apply filters
-      if (filters.dateRange) {
-        const startDate = new Date(filters.dateRange.start);
-        const endDate = new Date(filters.dateRange.end);
-        
-        availableSlots = availableSlots.filter(slot => {
-          const slotDate = new Date(slot.date);
-          return slotDate >= startDate && slotDate <= endDate;
-        });
-      }
-      
-      if (filters.testType) {
-        availableSlots = availableSlots.filter(slot => slot.type === filters.testType);
       }
 
       return {
-        success: true,
-        data: availableSlots,
-        message: availableSlots.length > 0 
-          ? `Found ${availableSlots.length} available DVSA test slots`
-          : 'No available slots found. This is common for high-demand areas. Consider setting up an alert.',
+        success: false,
+        data: [],
+        error: response.error || 'Failed to search test slots',
       };
     } catch (error) {
-      console.error('❌ DVSA test slot search error:', error);
+      console.error('❌ Production API slot search error:', error);
       return {
         success: false,
         data: [],
-        message: 'Failed to search DVSA test slots. Please try again.',
+        error: 'Failed to search test slots. Please try again.',
       };
     }
   }
