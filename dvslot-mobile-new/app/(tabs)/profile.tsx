@@ -126,6 +126,7 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
+    console.log('🔘 Sign out button clicked');
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
@@ -138,6 +139,8 @@ export default function Profile() {
             try {
               setLoading(true);
               console.log('🔓 Attempting to sign out...');
+              console.log('🔓 AuthService available:', !!authService);
+              console.log('🔓 Current auth state:', authState);
               
               const result = await authService.signOut();
               console.log('🔓 Sign out result:', result);
