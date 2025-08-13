@@ -70,7 +70,7 @@ export default function TabLayout() {
           ),
           headerTitle: 'DVSlot - Home',
           headerRight: () => (
-            <Link href="../modal" asChild>
+            <Link href="/modal" asChild>
               <Pressable style={{ marginRight: 15 }}>
                 {({ pressed }) => (
                   <FontAwesome

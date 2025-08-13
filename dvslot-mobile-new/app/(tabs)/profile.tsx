@@ -127,10 +127,10 @@ export default function Profile() {
               if (result.success) {
                 console.log('✅ Successfully signed out');
                 // Clear auth state and navigate to home page
-                setAuthState(null);
+                setAuthState({ isAuthenticated: false, user: null, session: null });
                 setUserAlerts([]);
-                // Force navigation to home tab
-                router.replace('/');
+                // Force navigation to root and then to tabs to refresh UI
+                try { router.replace('/'); } catch {}
                 // Show success message
                 setTimeout(() => {
                   Alert.alert('Success', 'You have been signed out successfully');

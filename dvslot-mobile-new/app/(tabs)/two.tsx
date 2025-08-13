@@ -174,6 +174,9 @@ export default function Search() {
               <Text style={styles.resultsSubtitle}>
                 Found {searchResults.totalResults} results
               </Text>
+              <Text style={styles.freshnessNote}>
+                Data auto-refreshed every few minutes. Some DVSA site differences may occur; we filter for updates in the last 2 hours.
+              </Text>
             </View>
 
             {searchResults.testCenters.length > 0 && (
@@ -390,6 +393,11 @@ const styles = StyleSheet.create({
   resultsSubtitle: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  freshnessNote: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 6,
   },
   testCentersSection: {
     marginBottom: 20,

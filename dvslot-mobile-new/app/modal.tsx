@@ -1,14 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function ModalScreen() {
+// Expo Router requires a default export React component
+const Page: React.FC = () => {
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Modal</Text>
-			<Text style={styles.subtitle}>This is a placeholder modal screen.</Text>
+			<Text style={styles.title}>Alerts</Text>
+			<Text style={styles.subtitle}>This is a placeholder alerts modal.</Text>
 		</View>
 	);
-}
+};
+
+export default Page;
 
 const styles = StyleSheet.create({
 	container: {

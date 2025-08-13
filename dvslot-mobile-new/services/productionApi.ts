@@ -1,15 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
-import * as Location from 'expo-location';
 import { supabase as sharedSupabase } from './supabase';
 import { platformStorage } from './storage';
 
-// Production Supabase Configuration
-const SUPABASE_URL = 'https://mrqwzdrdbdguuaarjkwh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycXd6ZHJkYmRndXVhYXJqa3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMzMTc3NTIsImV4cCI6MjAzODg5Mzc1Mn0.hQ4azGJRNB4wG4nJl3hk_k8YT8Ea0JxOtXJOlWg2NUI';
+// Always reuse the shared Supabase client to avoid multiple auth clients on web
+const supabase = sharedSupabase;
 
-// Initialize or reuse Supabase client to avoid multiple auth clients on web
-const supabase = sharedSupabase ?? createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Consider only slots updated within this window to reduce stale results
+const FRESHNESS_HOURS = 2;
+const freshnessIso = () => new Date(Date.now() - FRESHNESS_HOURS * 60 * 60 * 1000).toISOString();
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -326,7 +323,8 @@ class DVSlotProductionAPI {
           .select('center_id')
           .in('center_id', centerIds)
           .eq('available', true)
-          .gte('date', new Date().toISOString().split('T')[0]); // Today or later
+          .gte('date', new Date().toISOString().split('T')[0]) // Today or later
+          .gte('updated_at', freshnessIso()); // Only recently updated
 
         // Apply test type filter if specified
         if (filters.testType) {
@@ -472,6 +470,7 @@ class DVSlotProductionAPI {
         .in('center_id', centerIds)
         .eq('available', true)
         .gte('date', new Date().toISOString().split('T')[0])
+        .gte('updated_at', freshnessIso())
         .order('date', { ascending: true })
         .order('time', { ascending: true })
         .limit(100); // Limit results for performance
