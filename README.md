@@ -1,15 +1,19 @@
-# DVSlot - Driving Test Alert System
+# DVSlot - Complete UK Driving Test Alert System
 
-A real-time driving test slot monitoring and alerting system for the UK DVSA website. DVSlot helps learner drivers and parents/guardians find and book available driving test appointments through intelligent monitoring and instant notifications.
+**The most comprehensive driving test slot monitoring system covering ALL 318 official UK DVSA test centers**
+
+A real-time driving test slot monitoring and alerting system for the UK DVSA website. DVSlot helps learner drivers and parents/guardians find and book available driving test appointments through intelligent monitoring and instant notifications across the entire United Kingdom.
 
 ## 🚗 Features
 
+- **Complete UK Coverage**: Monitors all 318 official DVSA test centers across England, Scotland, Wales, Northern Ireland
 - **Real-time Monitoring**: Continuously monitors DVSA website for available driving test slots
+- **Advanced Cancellation Detection**: Detects cancelled slots within 5-10 minutes across entire UK network
 - **Intelligent Alerts**: Multi-channel notifications via push notifications, SMS, and email
-- **Smart Filtering**: Location-based filtering with distance calculation
+- **Smart Filtering**: Location-based filtering with distance calculation and regional coverage
 - **User Preferences**: Customizable alert preferences for dates, times, and locations
 - **Multi-user Support**: Family account management for parents and guardians
-- **Performance Optimized**: Redis caching and efficient web scraping
+- **Performance Optimized**: Redis caching and efficient web scraping across 350+ centers
 
 ## 🏗️ Architecture
 
