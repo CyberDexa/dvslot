@@ -1,9 +1,10 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, Platform } from 'react-native';
 
 import Colors from '@/constants/Colors';
+import { Theme } from '@/constants/Theme';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
@@ -11,8 +12,15 @@ import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
+  focused?: boolean;
 }) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+  return (
+    <FontAwesome 
+      size={props.focused ? 24 : 22} 
+      style={{ marginBottom: -3 }} 
+      {...props} 
+    />
+  );
 }
 
 export default function TabLayout() {
@@ -21,42 +29,55 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#3B82F6', // DVSlot blue theme
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: Theme.colors.primary[600],
+        tabBarInactiveTintColor: Theme.colors.gray[500],
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: Theme.colors.white,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          borderTopColor: Theme.colors.gray[200],
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 85 : 65,
+          ...Theme.shadows.sm,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
         },
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
         headerShown: useClientOnlyValue(false, true),
         headerStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: Theme.colors.white,
+          borderBottomWidth: 1,
+          borderBottomColor: Theme.colors.gray[200],
+          ...Theme.shadows.sm,
         },
         headerTitleStyle: {
-          color: '#1F2937',
-          fontWeight: '600',
+          color: Theme.colors.gray[800],
+          fontWeight: 'bold',
+          fontSize: 18,
         },
+        headerTintColor: Theme.colors.primary[600],
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-          headerTitle: 'DVSlot - Find Test Slots',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="home" color={color} focused={focused} />
+          ),
+          headerTitle: 'DVSlot - Home',
           headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
+            <Link href="../modal" asChild>
+              <Pressable style={{ marginRight: 15 }}>
                 {({ pressed }) => (
                   <FontAwesome
                     name="bell"
                     size={22}
-                    color="#3B82F6"
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
+                    color={Theme.colors.primary[600]}
+                    style={{ opacity: pressed ? 0.5 : 1 }}
                   />
                 )}
               </Pressable>
@@ -68,7 +89,9 @@ export default function TabLayout() {
         name="two"
         options={{
           title: 'Search',
-          tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="search" color={color} focused={focused} />
+          ),
           headerTitle: 'Find Test Slots',
         }}
       />
@@ -76,7 +99,9 @@ export default function TabLayout() {
         name="alerts"
         options={{
           title: 'Alerts',
-          tabBarIcon: ({ color }) => <TabBarIcon name="bell" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="bell" color={color} focused={focused} />
+          ),
           headerTitle: 'Your Alerts',
         }}
       />
@@ -84,7 +109,9 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="user" color={color} focused={focused} />
+          ),
           headerTitle: 'My Profile',
         }}
       />

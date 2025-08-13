@@ -110,18 +110,28 @@ export default function Profile() {
           onPress: async () => {
             try {
               setLoading(true);
+              console.log('🔓 Attempting to sign out...');
+              
               const result = await authService.signOut();
+              console.log('🔓 Sign out result:', result);
               
               if (result.success) {
+                console.log('✅ Successfully signed out');
                 // Clear auth state and navigate to home page
                 setAuthState(null);
                 setUserAlerts([]);
-                router.push('/');
+                // Force navigation to home tab
+                router.replace('/');
+                // Show success message
+                setTimeout(() => {
+                  Alert.alert('Success', 'You have been signed out successfully');
+                }, 500);
               } else {
+                console.error('❌ Sign out failed:', result.error);
                 Alert.alert('Error', result.error || 'Failed to sign out');
               }
             } catch (error) {
-              console.error('Sign out error:', error);
+              console.error('💥 Sign out error:', error);
               Alert.alert('Error', 'An unexpected error occurred during sign out');
             } finally {
               setLoading(false);
