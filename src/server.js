@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Updated 2025-08-13 - Force redeploy for postcode proxy endpoint
 const logger = require('./utils/logger');
 const { errorHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
