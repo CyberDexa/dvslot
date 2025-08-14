@@ -127,49 +127,52 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     console.log('🔘 Sign out button clicked');
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              console.log('🔓 Attempting to sign out...');
-              console.log('🔓 AuthService available:', !!authService);
-              console.log('🔓 Current auth state:', authState);
-              
-              const result = await authService.signOut();
-              console.log('🔓 Sign out result:', result);
-              
-              if (result.success) {
-                console.log('✅ Successfully signed out');
-                // Clear auth state and navigate to home page
-                setAuthState({ isAuthenticated: false, user: null, session: null });
-                setUserAlerts([]);
-                // Force navigation to root and then to tabs to refresh UI
-                try { router.replace('/'); } catch {}
-                // Show success message
-                setTimeout(() => {
-                  Alert.alert('Success', 'You have been signed out successfully');
-                }, 500);
-              } else {
-                console.error('❌ Sign out failed:', result.error);
-                Alert.alert('Error', result.error || 'Failed to sign out');
-              }
-            } catch (error) {
-              console.error('💥 Sign out error:', error);
-              Alert.alert('Error', 'An unexpected error occurred during sign out');
-            } finally {
-              setLoading(false);
-            }
-          }
+    
+    // Use confirm dialog for web compatibility
+    const shouldSignOut = typeof window !== 'undefined' && window.confirm 
+      ? window.confirm('Are you sure you want to sign out?')
+      : true; // Default to true for native
+    
+    if (!shouldSignOut) {
+      console.log('🔘 Sign out cancelled by user');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🔓 Attempting to sign out...');
+      
+      const result = await authService.signOut();
+      console.log('🔓 Sign out result:', result);
+      
+      if (result.success) {
+        console.log('✅ Successfully signed out');
+        // Clear auth state and navigate to home page
+        setAuthState({ isAuthenticated: false, user: null, session: null });
+        setUserAlerts([]);
+        // Force navigation to root to refresh UI
+        router.replace('/');
+        
+        // Show success message using web-compatible method
+        if (typeof window !== 'undefined' && window.alert) {
+          setTimeout(() => {
+            window.alert('Successfully signed out!');
+          }, 300);
         }
-      ]
-    );
+      } else {
+        console.error('❌ Sign out failed:', result.error);
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert('Sign out failed: ' + (result.error || 'Unknown error'));
+        }
+      }
+    } catch (error) {
+      console.error('💥 Sign out error:', error);
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('An unexpected error occurred during sign out');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUpdateProfile = async () => {
