@@ -140,7 +140,7 @@ class DVSlotProductionAPI {
       try {
         const backendUrl = `${API_BASE_URL}/postcode/${encodeURIComponent(postcode)}`;
         console.log('🔍 Trying backend postcode API:', backendUrl);
-        const response = await fetchWithTimeout(backendUrl, undefined, 8000, 'backend postcode lookup');
+        const response = await fetchWithTimeout(backendUrl, undefined, 15000, 'backend postcode lookup');
         const data = await response.json();
         
         if (data.success && data.latitude && data.longitude) {
@@ -149,6 +149,10 @@ class DVSlotProductionAPI {
             latitude: data.latitude,
             longitude: data.longitude
           };
+        } else if (data.error && data.error.toLowerCase().includes('not found')) {
+          // Show a clear error for postcode not found
+          alert('❌ Postcode not found. Please check and try again.');
+          return null;
         }
       } catch (backendError) {
         console.log('⚠️ Backend postcode lookup failed, trying direct API:', backendError);
@@ -156,7 +160,7 @@ class DVSlotProductionAPI {
 
       // Fallback to direct postcodes.io API (may be blocked by CSP)
       const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
-      const response = await fetchWithTimeout(url, undefined, 8000, 'postcodes.io lookup');
+      const response = await fetchWithTimeout(url, undefined, 15000, 'postcodes.io lookup');
       const data = await response.json();
       
       if (data.status === 200 && data.result) {
@@ -164,18 +168,25 @@ class DVSlotProductionAPI {
           latitude: data.result.latitude,
           longitude: data.result.longitude
         };
+      } else if (data.status === 404) {
+        alert('❌ Postcode not found. Please check and try again.');
+        return null;
       }
       // Fallback for some Scottish/Northern Ireland formats: try stripping spaces
       if (postcode.includes(' ')) {
         const compact = postcode.replace(/\s+/g, '');
-        const r2 = await fetchWithTimeout(`https://api.postcodes.io/postcodes/${encodeURIComponent(compact)}`, undefined, 6000, 'postcodes.io compact lookup');
+        const r2 = await fetchWithTimeout(`https://api.postcodes.io/postcodes/${encodeURIComponent(compact)}`, undefined, 10000, 'postcodes.io compact lookup');
         const d2 = await r2.json();
         if (d2.status === 200 && d2.result) {
           return { latitude: d2.result.latitude, longitude: d2.result.longitude };
+        } else if (d2.status === 404) {
+          alert('❌ Postcode not found. Please check and try again.');
+          return null;
         }
       }
     } catch (error) {
       console.error('Postcode lookup error:', error);
+      alert('❌ Postcode lookup failed due to a network or server error. Please try again.');
     }
     return null;
   }
