@@ -14,6 +14,8 @@ const testCenterRoutes = require('./routes/testCenters');
 const appointmentRoutes = require('./routes/appointments');
 
 const app = express();
+// Trust proxy for correct client IP detection (required for rate limiting behind Render/Vercel)
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
