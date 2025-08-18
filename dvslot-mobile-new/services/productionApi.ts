@@ -4,8 +4,8 @@ import { platformStorage } from './storage';
 // Always reuse the shared Supabase client to avoid multiple auth clients on web
 const supabase = sharedSupabase;
 
-// API Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://dvslot-api.onrender.com';
+// API Configuration - HARDCODED to fix environment variable issue
+const API_BASE_URL = 'https://dvslot-api.onrender.com';
 
 // Consider only slots updated within this window to reduce stale results
 const FRESHNESS_HOURS = 2;

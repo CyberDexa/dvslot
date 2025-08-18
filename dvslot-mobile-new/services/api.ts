@@ -2,8 +2,8 @@ import Constants from 'expo-constants';
 import { productionApi } from './productionApi';
 import { platformStorage } from './storage';
 
-// DVSlot Backend API Configuration (Render/Vercel)
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://dvslot-api.onrender.com';
+// DVSlot Backend API Configuration (Render/Vercel) - HARDCODED to fix environment issue
+const API_BASE_URL = 'https://dvslot-api.onrender.com';
 const API_VERSION = 'api/v1';
 const BACKEND_TOKEN_KEY = 'dvslot_backend_jwt';
 
