@@ -79,10 +79,28 @@ export default function Search() {
         setSearchResults(results);
         setLastSearchQuery(`${postcode.trim().toUpperCase()} within ${radius} miles`);
 
+        // Check if we're showing fallback/demo data
+        const isDemoData = testCentersResponse.message?.includes('demo') || 
+                          testCentersResponse.message?.includes('Demo') ||
+                          availableSlotsResponse.message?.includes('demo') ||
+                          availableSlotsResponse.message?.includes('Demo') ||
+                          testCentersResponse.message?.includes('temporarily unavailable') ||
+                          availableSlotsResponse.message?.includes('temporarily unavailable');
+
         if (results.totalResults === 0) {
           Alert.alert(
             'No Results Found', 
             `No test slots found for ${postcode.trim().toUpperCase()} within ${radius} miles. Try:\n\n• Increasing your search radius\n• Checking a different postcode\n• Setting up an alert to be notified when slots become available`
+          );
+        } else if (isDemoData) {
+          // Show special message for demo/fallback data
+          Alert.alert(
+            '⚠️ Demo Data Shown', 
+            `Showing ${results.testCenters.length} demo centers and ${results.testSlots.length} sample slots.\n\n${testCentersResponse.message || availableSlotsResponse.message}\n\nPlease try again later for live data from our 318 UK centers database.`,
+            [
+              { text: 'OK', style: 'default' },
+              { text: 'Retry', onPress: () => handleSearch() }
+            ]
           );
         } else {
           Alert.alert('Search Complete', `Found ${results.testCenters.length} test centers and ${results.testSlots.length} available slots from our 318 UK centers database!`);
@@ -95,8 +113,12 @@ export default function Search() {
     } catch (error) {
       console.error('Search error:', error);
       Alert.alert(
-        'Search Error', 
-        'Unable to connect to our database at the moment. Please check your internet connection and try again.'
+        'Connection Error', 
+        'Unable to connect to our services at the moment. Please check your internet connection and try again.\n\nIf the problem persists, the service may be temporarily unavailable.',
+        [
+          { text: 'OK', style: 'default' },
+          { text: 'Retry', onPress: () => handleSearch() }
+        ]
       );
     } finally {
       setIsSearching(false);
