@@ -1,7 +1,17 @@
+-- ⚠️  DEPRECATED - USE corrected-test-centres-migration.sql INSTEAD
+-- This file contains INCORRECT addresses and coordinates
 -- Official UK DVSA Test Centers Database
 -- Source: Official DVSA Test Center List
 -- Generated: 2025-08-13T04:36:59.489Z
 -- Total Centers: 318 (Official Count)
+-- 
+-- KNOWN ISSUES:
+-- ❌ Aberdeen centers show Glasgow coordinates
+-- ❌ Alnwick marked as Scotland (should be North East England)  
+-- ❌ Fake generated addresses instead of real DVSA locations
+-- ❌ Many incorrect postcodes and regions
+-- 
+-- ✅ SOLUTION: Use scripts/corrected-test-centres-migration.sql instead
 
 -- Clear existing data
 DELETE FROM dvsa_test_centers WHERE center_id IS NOT NULL;
