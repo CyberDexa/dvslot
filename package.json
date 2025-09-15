@@ -10,7 +10,10 @@
     "lint": "eslint src/",
     "migrate": "knex migrate:latest",
     "seed": "knex seed:run",
-    "scraper": "node src/services/scraperService.js"
+    "scraper": "node src/services/scraperService.js",
+    "init-system": "node initialize_system.js",
+    "populate-slots": "node -e \"require('./src/services/slotPopulationService').populateAllCenterSlots().then(() => process.exit(0)).catch(e => {console.error(e); process.exit(1)})\"",
+    "diagnose": "node diagnose_issue.js"
   },
   "keywords": [
     "driving-test",

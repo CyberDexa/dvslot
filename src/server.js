@@ -79,6 +79,53 @@ app.use('/api/v1/alerts', alertRoutes);
 app.use('/api/v1/test-centers', testCenterRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
 
+// Admin endpoint for manual slot population (for debugging/setup)
+app.post('/admin/populate-slots', async (req, res) => {
+  try {
+    const { authorization } = req.headers;
+    
+    // Simple admin check (in production, use proper authentication)
+    if (!authorization || authorization !== 'Bearer admin-debug-token') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const slotPopulationService = require('./services/slotPopulationService');
+    const result = await slotPopulationService.populateAllCenterSlots();
+    
+    res.json({
+      success: true,
+      message: 'Slot population completed',
+      data: result
+    });
+  } catch (error) {
+    logger.error('Manual slot population failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Admin endpoint to check slot statistics
+app.get('/admin/slot-stats', async (req, res) => {
+  try {
+    const slotPopulationService = require('./services/slotPopulationService');
+    const stats = await slotPopulationService.getSlotStats();
+    
+    res.json({
+      success: true,
+      data: stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('Slot stats failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Postcode lookup proxy to bypass CSP issues
 app.get('/postcode/:postcode', async (req, res) => {
   try {
@@ -131,6 +178,45 @@ process.on('SIGTERM', () => {
     process.exit(0);
   });
 });
+
+// Auto-start scheduler and slot population service if in production
+if (process.env.NODE_ENV === 'production' || process.env.AUTO_START_SERVICES === 'true') {
+  try {
+    const schedulerService = require('./services/schedulerService');
+    const slotPopulationService = require('./services/slotPopulationService');
+    
+    // Start scheduler service
+    schedulerService.start();
+    logger.info('Scheduler service started automatically');
+    
+    // Start slot population scheduler
+    slotPopulationService.startScheduler();
+    logger.info('Slot population scheduler started automatically');
+    
+    // Run initial slot population if needed (async, don't block startup)
+    setTimeout(async () => {
+      try {
+        const { supabase } = require('../supabase-config');
+        const { count } = await supabase
+          .from('driving_test_slots')
+          .select('*', { count: 'exact', head: true })
+          .eq('available', true)
+          .gt('date', new Date().toISOString().split('T')[0]);
+        
+        if (count < 50) {
+          logger.info('Running initial slot population (low available slots detected)');
+          await slotPopulationService.populateAllCenterSlots();
+          logger.info('Initial slot population completed');
+        }
+      } catch (error) {
+        logger.warn('Initial slot population failed:', error.message);
+      }
+    }, 5000); // Wait 5 seconds after server start
+    
+  } catch (error) {
+    logger.warn('Auto-start services failed:', error.message);
+  }
+}
 
 const server = app.listen(PORT, () => {
   logger.info(`DVSlot API server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
