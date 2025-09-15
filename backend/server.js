@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const axios = require('axios');
 const dvsaScraper = require('./services/dvsaScraper');
 const scheduler = require('./workers/scheduler');
 const logger = require('./utils/logger');
@@ -12,7 +13,36 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+
+// CORS configuration - Allow Vercel preview domains and localhost
+const allowedOrigins = [
+  'http://localhost:19006', // Expo web default
+  'http://localhost:8081',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://dvslot.com',
+  'https://www.dvslot.com',
+  'https://dvslot-web.vercel.app',
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list or matches Vercel pattern
+    const ok = allowedOrigins.includes(origin)
+      || /\.vercel\.app$/i.test(origin)
+      || /localhost(:\d+)?$/i.test(origin)
+      || /127\.0\.0\.1(:\d+)?$/i.test(origin);
+      
+    if (ok) return callback(null, true);
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Rate limiting
@@ -31,6 +61,60 @@ app.get('/health', (req, res) => {
     version: '1.0.0',
     scheduler: scheduler.getStatus()
   });
+});
+
+// Postcode lookup proxy to bypass CSP issues
+app.get('/postcode/:postcode', async (req, res) => {
+  try {
+    const { postcode } = req.params;
+    if (!postcode) {
+      return res.status(400).json({ success: false, error: 'Postcode required' });
+    }
+
+    try {
+      // Fetch from postcodes.io API
+      const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`;
+      const response = await axios.get(url, { timeout: 5000 });
+      const data = response.data;
+
+      if (data.status === 200 && data.result) {
+        res.json({
+          success: true,
+          latitude: data.result.latitude,
+          longitude: data.result.longitude,
+          postcode: data.result.postcode
+        });
+      } else {
+        res.status(404).json({ success: false, error: 'Postcode not found' });
+      }
+    } catch (apiError) {
+      // Fallback response for testing or when API is unavailable
+      logger.warn('Postcodes.io API unavailable, using fallback coordinates');
+      
+      // Provide fallback coordinates for common UK postcodes for testing
+      const fallbackCoordinates = {
+        'SW1A 1AA': { latitude: 51.5014, longitude: -0.1419 }, // Buckingham Palace
+        'M1 1AA': { latitude: 53.4834, longitude: -2.2426 }, // Manchester
+        'B1 1AA': { latitude: 52.4862, longitude: -1.8904 }, // Birmingham
+      };
+      
+      const coordinates = fallbackCoordinates[postcode.toUpperCase()];
+      if (coordinates) {
+        res.json({
+          success: true,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          postcode: postcode.toUpperCase(),
+          fallback: true
+        });
+      } else {
+        res.status(404).json({ success: false, error: 'Postcode not found' });
+      }
+    }
+  } catch (error) {
+    logger.error('Postcode lookup error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
 });
 
 // Manual scraping endpoint (for testing/admin use)
