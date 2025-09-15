@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { supabase } = require('../supabase-config');
+const { supabase } = require('../../supabase-config');
 const logger = require('../utils/logger');
 
 class SlotPopulationService {

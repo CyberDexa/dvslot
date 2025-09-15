@@ -1,6 +1,5 @@
 const express = require('express');
-const DrivingTestSlot = require('../models/DrivingTestSlot');
-const TestCenter = require('../models/TestCenter');
+const { DrivingTestSlot, TestCenter } = require('../models/FallbackModels');
 const { optionalAuth } = require('../middleware/auth');
 const { validateAppointmentSearch } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
