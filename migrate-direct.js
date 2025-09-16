@@ -41,7 +41,7 @@ const completeTestCenters = [
     { id: 'tc_085', name: 'Bournemouth', address: 'Holdenhurst Road, Bournemouth', postcode: 'BH8 8EB', city: 'Bournemouth', region: 'South West', latitude: 50.7192, longitude: -1.8808, phone_number: '0300 200 1122', is_active: true },
     
     // West Midlands (25 centers)
-    { id: 'tc_116', name: 'Birmingham', address: 'Garretts Green, Birmingham', postcode: 'B26 2HT', city: 'Birmingham', region: 'West Midlands', latitude: 52.4506, longitude: -1.8040, phone_number: '0300 200 1122', is_active: true },
+    { id: 'tc_116', name: 'Birmingham (South Yardley)', address: 'Coventry Road', postcode: 'B25 8HU', city: 'Birmingham', region: 'West Midlands', latitude: 52.4569, longitude: -1.8207, phone_number: '0300 200 1122', is_active: true },
     { id: 'tc_117', name: 'Coventry', address: 'London Road, Coventry', postcode: 'CV1 2JT', city: 'Coventry', region: 'West Midlands', latitude: 52.4068, longitude: -1.5197, phone_number: '0300 200 1122', is_active: true },
     { id: 'tc_118', name: 'Wolverhampton', address: 'Newhampton Road West, Wolverhampton', postcode: 'WV6 0QP', city: 'Wolverhampton', region: 'West Midlands', latitude: 52.5855, longitude: -2.1629, phone_number: '0300 200 1122', is_active: true },
     { id: 'tc_119', name: 'Worcester', address: 'Bromwich Road, Worcester', postcode: 'WR2 4BW', city: 'Worcester', region: 'West Midlands', latitude: 52.1865, longitude: -2.2221, phone_number: '0300 200 1122', is_active: true },

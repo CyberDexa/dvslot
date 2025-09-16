@@ -23,7 +23,7 @@ const testCenters = [
     { id: crypto.randomUUID(), name: 'London (Hendon)', address: 'Aerodrome Road, Hendon', postcode: 'NW9 5LL', city: 'London', region: 'London', latitude: 51.5664, longitude: -0.2312, phone_number: '0300 200 1122', is_active: true },
     
     // Major cities across UK
-    { id: crypto.randomUUID(), name: 'Birmingham', address: 'Garretts Green, Birmingham', postcode: 'B26 2HT', city: 'Birmingham', region: 'West Midlands', latitude: 52.4506, longitude: -1.8040, phone_number: '0300 200 1122', is_active: true },
+    { id: crypto.randomUUID(), name: 'Birmingham (South Yardley)', address: 'Coventry Road', postcode: 'B25 8HU', city: 'Birmingham', region: 'West Midlands', latitude: 52.4569, longitude: -1.8207, phone_number: '0300 200 1122', is_active: true },
     { id: crypto.randomUUID(), name: 'Manchester', address: 'Openshaw, Manchester', postcode: 'M11 2EJ', city: 'Manchester', region: 'North West', latitude: 53.4808, longitude: -2.2426, phone_number: '0300 200 1122', is_active: true },
     { id: crypto.randomUUID(), name: 'Liverpool', address: 'Speke Hall Avenue, Liverpool', postcode: 'L24 1YD', city: 'Liverpool', region: 'North West', latitude: 53.3498, longitude: -2.8526, phone_number: '0300 200 1122', is_active: true },
     { id: crypto.randomUUID(), name: 'Leeds', address: 'Harehills, Leeds', postcode: 'LS8 3DT', city: 'Leeds', region: 'Yorkshire', latitude: 53.8008, longitude: -1.5491, phone_number: '0300 200 1122', is_active: true },

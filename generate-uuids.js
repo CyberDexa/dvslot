@@ -11,7 +11,7 @@ const testCentersWithUUIDs = [];
 // Sample data to convert
 const sampleCenters = [
     { name: 'London (Mill Hill)', address: 'The Hyde, Mill Hill, London', postcode: 'NW7 1RB', city: 'London', region: 'London', latitude: 51.6156, longitude: -0.2464 },
-    { name: 'Birmingham', address: 'Garretts Green, Birmingham', postcode: 'B26 2HT', city: 'Birmingham', region: 'West Midlands', latitude: 52.4506, longitude: -1.8040 },
+    { name: 'Birmingham (South Yardley)', address: 'Coventry Road', postcode: 'B25 8HU', city: 'Birmingham', region: 'West Midlands', latitude: 52.4569, longitude: -1.8207 },
     { name: 'Manchester', address: 'Openshaw, Manchester', postcode: 'M11 2EJ', city: 'Manchester', region: 'North West', latitude: 53.4808, longitude: -2.2426 },
     { name: 'Leeds', address: 'Harehills, Leeds', postcode: 'LS8 3DT', city: 'Leeds', region: 'Yorkshire', latitude: 53.8008, longitude: -1.5491 },
     { name: 'Liverpool', address: 'Speke Hall Avenue, Liverpool', postcode: 'L24 1YD', city: 'Liverpool', region: 'North West', latitude: 53.3498, longitude: -2.8526 }
