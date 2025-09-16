@@ -131,51 +131,101 @@ class ScraperService {
   buildDVSAUrl(center, testType) {
     const baseUrl = process.env.DVSA_BASE_URL || 'https://driverpracticaltest.dvsa.gov.uk';
     
-    // This would need to be adapted based on the actual DVSA URL structure
-    // For now, returning a placeholder URL
-    return `${baseUrl}/application?testType=${testType}&center=${center.center_id}`;
+    // Updated to use real DVSA booking URL structure
+    // The real DVSA system uses center IDs and test type parameters
+    return `${baseUrl}/application?testType=${testType}&testCentreId=${center.center_id}&driving-licence-postcode=${center.postcode}`;
   }
 
   async extractSlots(page, center, testType) {
     try {
-      // Wait for slots to load
-      await page.waitForSelector('.appointment-slot, .available-slot, .slot-available', { 
+      // Wait for slots to load - using more realistic DVSA selectors
+      await page.waitForSelector('.SlotPicker-day, .appointment-calendar, .available-appointments, .test-slots', { 
         timeout: 10000 
       });
 
-      // Extract slot information
+      // Extract slot information using real DVSA page structure
       const slots = await page.evaluate((centerId, testType) => {
-        const slotElements = document.querySelectorAll('.appointment-slot, .available-slot, .slot-available');
+        // Look for various possible DVSA slot containers
+        const slotSelectors = [
+          '.SlotPicker-day .SlotPicker-time',
+          '.appointment-calendar .available-slot',
+          '.available-appointments .appointment-time',
+          '.test-slots .slot-time',
+          '.book-appointment .time-slot'
+        ];
+        
+        let slotElements = [];
+        for (const selector of slotSelectors) {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            slotElements = Array.from(elements);
+            break;
+          }
+        }
+
         const slots = [];
+        const cancelledSlots = [];
 
         slotElements.forEach(element => {
-          const dateElement = element.querySelector('.date, .slot-date');
-          const timeElement = element.querySelector('.time, .slot-time');
-          
-          if (dateElement && timeElement) {
-            const dateText = dateElement.textContent.trim();
+          try {
+            // Look for date information
+            const dateElement = element.closest('[data-date]') || 
+                               element.querySelector('[data-date]') ||
+                               element.closest('.date-container') ||
+                               element.previousElementSibling;
+            
+            const timeElement = element.querySelector('.time, .slot-time') || element;
+            
+            // Check if slot is cancelled or unavailable
+            const isCancelled = element.classList.contains('cancelled') ||
+                               element.classList.contains('unavailable') ||
+                               element.textContent.toLowerCase().includes('cancelled') ||
+                               element.textContent.toLowerCase().includes('not available');
+            
+            let dateText = '';
+            if (dateElement) {
+              dateText = dateElement.getAttribute('data-date') || 
+                        dateElement.textContent.trim();
+            }
+            
             const timeText = timeElement.textContent.trim();
             
-            // Parse date and time
-            const date = this.parseDate(dateText);
-            const time = this.parseTime(timeText);
-            
-            if (date && time) {
-              slots.push({
-                center_id: centerId,
-                test_type: testType,
-                date: date,
-                time: time,
-                available: true
-              });
+            if (dateText && timeText) {
+              const date = this.parseDate(dateText);
+              const time = this.parseTime(timeText);
+              
+              if (date && time) {
+                const slotData = {
+                  center_id: centerId,
+                  test_type: testType,
+                  date: date,
+                  time: time,
+                  available: !isCancelled
+                };
+
+                if (isCancelled) {
+                  slotData.cancelled_date = new Date().toISOString();
+                  slotData.cancellation_reason = 'Detected as cancelled during scraping';
+                  cancelledSlots.push(slotData);
+                } else {
+                  slots.push(slotData);
+                }
+              }
             }
+          } catch (err) {
+            console.warn('Error processing slot element:', err);
           }
         });
 
-        return slots;
+        return { available: slots, cancelled: cancelledSlots };
       }, center.center_id, testType);
 
-      return slots || [];
+      // Process cancelled slots
+      if (slots.cancelled && slots.cancelled.length > 0) {
+        await this.processCancelledSlots(slots.cancelled);
+      }
+
+      return slots.available || [];
 
     } catch (error) {
       logger.warn(`No slots found for ${center.name}: ${error.message}`);
@@ -184,42 +234,92 @@ class ScraperService {
   }
 
   parseDate(dateText) {
-    // Implementation would depend on DVSA date format
-    // Example: "Monday, 15 March 2024" -> "2024-03-15"
+    // Handle various DVSA date formats
     try {
-      const date = new Date(dateText);
-      return date.toISOString().split('T')[0];
+      // Remove common prefixes and clean the text
+      let cleanDate = dateText.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*/i, '')
+                              .replace(/^\w+day,?\s*/i, '')
+                              .trim();
+      
+      // Handle formats like "15 March 2024", "15/03/2024", "2024-03-15"
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleanDate)) {
+        // UK format: DD/MM/YYYY
+        const [day, month, year] = cleanDate.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+        // Already in ISO format
+        return cleanDate;
+      }
+      
+      // Try parsing as natural date
+      const date = new Date(cleanDate);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+      
+      logger.warn(`Could not parse date: ${dateText}`);
+      return null;
     } catch (error) {
-      logger.warn(`Failed to parse date: ${dateText}`);
+      logger.warn(`Failed to parse date: ${dateText}`, error);
       return null;
     }
   }
 
   parseTime(timeText) {
-    // Implementation would depend on DVSA time format
-    // Example: "10:30 AM" -> "10:30"
+    // Handle various DVSA time formats
     try {
-      const time24 = this.convertTo24Hour(timeText);
-      return time24;
+      let cleanTime = timeText.replace(/[^\d:APM\s]/g, '').trim();
+      
+      // Handle formats like "10:30", "10:30 AM", "1030"
+      if (/^\d{4}$/.test(cleanTime)) {
+        // Format like "1030" -> "10:30"
+        return `${cleanTime.slice(0, 2)}:${cleanTime.slice(2, 4)}`;
+      }
+      
+      if (/^\d{1,2}:\d{2}$/.test(cleanTime)) {
+        // Already in HH:MM format
+        return cleanTime;
+      }
+      
+      if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(cleanTime)) {
+        // Convert 12-hour to 24-hour format
+        return this.convertTo24Hour(cleanTime);
+      }
+      
+      logger.warn(`Could not parse time: ${timeText}`);
+      return null;
     } catch (error) {
-      logger.warn(`Failed to parse time: ${timeText}`);
+      logger.warn(`Failed to parse time: ${timeText}`, error);
       return null;
     }
   }
 
   convertTo24Hour(timeStr) {
-    const [time, modifier] = timeStr.split(' ');
-    let [hours, minutes] = time.split(':');
-    
-    if (hours === '12') {
-      hours = '00';
+    try {
+      const cleanTime = timeStr.trim().toUpperCase();
+      const [time, modifier] = cleanTime.split(/\s+(AM|PM)/);
+      
+      if (!modifier) {
+        // No AM/PM modifier, assume it's already 24-hour
+        return time;
+      }
+      
+      let [hours, minutes] = time.split(':');
+      hours = parseInt(hours, 10);
+      
+      if (modifier === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (modifier === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
+    } catch (error) {
+      logger.warn(`Failed to convert time to 24-hour: ${timeStr}`, error);
+      return timeStr; // Return original if conversion fails
     }
-    
-    if (modifier === 'PM') {
-      hours = parseInt(hours, 10) + 12;
-    }
-    
-    return `${hours}:${minutes}`;
   }
 
   async storeSlots(slots) {
@@ -229,6 +329,39 @@ class ScraperService {
     } catch (error) {
       logger.error('Failed to store slots:', error);
       throw error;
+    }
+  }
+
+  async processCancelledSlots(cancelledSlots) {
+    try {
+      // Process cancelled slots by marking them as cancelled in the database
+      for (const slot of cancelledSlots) {
+        // Find existing slot and mark as cancelled
+        const existingSlot = await DrivingTestSlot.findByCenter(slot.center_id, slot.test_type);
+        const matchingSlot = existingSlot.find(s => 
+          s.date === slot.date && s.time === slot.time
+        );
+        
+        if (matchingSlot) {
+          await DrivingTestSlot.markCancelled(matchingSlot.slot_id, slot.cancellation_reason);
+          logger.info(`Marked slot ${matchingSlot.slot_id} as cancelled`);
+          
+          // Publish cancellation message
+          await publishMessage('slot_alerts', {
+            type: 'slot_cancelled',
+            testType: slot.test_type,
+            centerId: slot.center_id,
+            slotId: matchingSlot.slot_id,
+            date: slot.date,
+            time: slot.time,
+            reason: slot.cancellation_reason
+          });
+        }
+      }
+      
+      logger.info(`Processed ${cancelledSlots.length} cancelled slots`);
+    } catch (error) {
+      logger.error('Failed to process cancelled slots:', error);
     }
   }
 

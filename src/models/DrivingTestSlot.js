@@ -100,6 +100,15 @@ class DrivingTestSlot {
     });
   }
 
+  static async markCancelled(slotId, reason = null) {
+    return await this.update(slotId, {
+      available: false,
+      cancelled_date: db.fn.now(),
+      cancellation_reason: reason,
+      last_checked: db.fn.now()
+    });
+  }
+
   static async markAvailable(slotId) {
     return await this.update(slotId, { 
       available: true,
@@ -137,6 +146,20 @@ class DrivingTestSlot {
       .where('driving_test_slots.available', true)
       .where('driving_test_slots.updated_at', '>=', db.raw(`NOW() - INTERVAL '${hours} hours'`))
       .orderBy('driving_test_slots.updated_at', 'desc');
+  }
+
+  static async getRecentlyCancelled(hours = 24) {
+    return await db('driving_test_slots')
+      .select(
+        'driving_test_slots.*',
+        'dvsa_test_centers.name as center_name',
+        'dvsa_test_centers.postcode',
+        'dvsa_test_centers.region'
+      )
+      .join('dvsa_test_centers', 'driving_test_slots.center_id', 'dvsa_test_centers.center_id')
+      .whereNotNull('driving_test_slots.cancelled_date')
+      .where('driving_test_slots.cancelled_date', '>=', db.raw(`NOW() - INTERVAL '${hours} hours'`))
+      .orderBy('driving_test_slots.cancelled_date', 'desc');
   }
 
   static async getSlotsByDateRange(centerId, testType, dateFrom, dateTo) {

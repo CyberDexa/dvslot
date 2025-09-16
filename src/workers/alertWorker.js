@@ -205,15 +205,32 @@ class AlertWorker {
   }
 
   async handleSlotCancellation(message) {
-    // Handle when a slot becomes unavailable
-    // This could involve notifying users or updating alert statuses
+    // Handle when a slot becomes unavailable/cancelled
     logger.info('Handling slot cancellation', {
       slotId: message.slotId,
-      centerId: message.centerId
+      centerId: message.centerId,
+      date: message.date,
+      time: message.time,
+      reason: message.reason
     });
 
-    // Implementation depends on business requirements
-    // For now, just log the event
+    try {
+      // Find users who might have been interested in this slot
+      // and potentially notify them about the cancellation
+      const alertService = require('../services/alertService');
+      
+      // Log the cancellation for analytics/monitoring
+      logger.info(`Slot cancelled: ${message.date} ${message.time} at center ${message.centerId}`, {
+        reason: message.reason,
+        slotId: message.slotId
+      });
+
+      // Could implement notification to interested users here
+      // For now, just track the event
+      
+    } catch (error) {
+      logger.error('Error handling slot cancellation:', error);
+    }
   }
 
   stop() {

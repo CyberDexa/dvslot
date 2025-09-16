@@ -107,6 +107,8 @@ router.get('/driving-tests', optionalAuth, asyncHandler(async (req, res) => {
           region: slot.region
         },
         available: slot.available,
+        cancelled_date: slot.cancelled_date || null,
+        cancellation_reason: slot.cancellation_reason || null,
         last_checked: slot.last_checked
       })),
       search_criteria: {
@@ -222,6 +224,8 @@ router.post('/search', optionalAuth, asyncHandler(async (req, res) => {
           region: slot.region
         },
         available: slot.available,
+        cancelled_date: slot.cancelled_date || null,
+        cancellation_reason: slot.cancellation_reason || null,
         last_checked: slot.last_checked
       })),
       search_criteria: {
@@ -287,6 +291,8 @@ router.get('/:slotId', optionalAuth, asyncHandler(async (req, res) => {
           region: slot.region
         },
         available: slot.available,
+        cancelled_date: slot.cancelled_date || null,
+        cancellation_reason: slot.cancellation_reason || null,
         created_at: slot.created_at,
         last_checked: slot.last_checked
       }
@@ -340,6 +346,48 @@ router.get('/recent', optionalAuth, asyncHandler(async (req, res) => {
           region: slot.region
         },
         updated_at: slot.updated_at
+      })),
+      criteria: {
+        hours_back: parseInt(hours),
+        test_type,
+        limit: parseInt(limit)
+      }
+    }
+  });
+}));
+
+// @route   GET /api/v1/appointments/cancelled
+// @desc    Get recently cancelled appointments
+// @access  Public
+router.get('/cancelled', optionalAuth, asyncHandler(async (req, res) => {
+  const { hours = 24, test_type, limit = 20 } = req.query;
+
+  let cancelledSlots = await DrivingTestSlot.getRecentlyCancelled(parseInt(hours));
+
+  // Filter by test type if specified
+  if (test_type && ['practical', 'theory'].includes(test_type)) {
+    cancelledSlots = cancelledSlots.filter(slot => slot.test_type === test_type);
+  }
+
+  // Limit results
+  const limitedSlots = cancelledSlots.slice(0, parseInt(limit));
+
+  res.json({
+    message: 'Recently cancelled appointments retrieved successfully',
+    data: {
+      cancelled_appointments: limitedSlots.map(slot => ({
+        slot_id: slot.slot_id,
+        test_type: slot.test_type,
+        date: slot.date,
+        time: slot.time,
+        cancelled_date: slot.cancelled_date,
+        cancellation_reason: slot.cancellation_reason,
+        center: {
+          center_id: slot.center_id,
+          name: slot.center_name,
+          postcode: slot.postcode,
+          region: slot.region
+        }
       })),
       criteria: {
         hours_back: parseInt(hours),
