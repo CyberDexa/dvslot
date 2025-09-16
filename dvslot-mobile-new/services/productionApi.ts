@@ -4,8 +4,27 @@ import { platformStorage } from './storage';
 // Always reuse the shared Supabase client to avoid multiple auth clients on web
 const supabase = sharedSupabase;
 
-// API Configuration - HARDCODED to fix environment variable issue
-const API_BASE_URL = 'https://dvslot-api.onrender.com';
+// API Configuration - Environment-aware URL selection
+const getApiBaseUrl = () => {
+  // Check if we're in development environment
+  if (typeof window !== 'undefined') {
+    // Web development environment detection
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('expo')) {
+      return 'http://localhost:3000';
+    }
+  }
+  
+  // Check for Expo development
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+  
+  // Production fallback
+  return 'https://dvslot-api.onrender.com';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Consider only slots updated within this window to reduce stale results
 const FRESHNESS_HOURS = 2;

@@ -2,8 +2,27 @@ import Constants from 'expo-constants';
 import { productionApi } from './productionApi';
 import { platformStorage } from './storage';
 
-// DVSlot Backend API Configuration (Render/Vercel) - HARDCODED to fix environment issue
-const API_BASE_URL = 'https://dvslot-api.onrender.com';
+// DVSlot Backend API Configuration (Environment-aware)
+const getApiBaseUrl = () => {
+  // Check if we're in development environment
+  if (typeof window !== 'undefined') {
+    // Web development environment detection
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('expo')) {
+      return 'http://localhost:3000';
+    }
+  }
+  
+  // Check for Expo development
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+  
+  // Production fallback
+  return 'https://dvslot-api.onrender.com';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const API_VERSION = 'api/v1';
 const BACKEND_TOKEN_KEY = 'dvslot_backend_jwt';
 
