@@ -9,26 +9,26 @@ exports.seed = async function(knex) {
   await knex('dvsa_test_centers').insert([
     {
       name: 'London (Wood Green)',
-      postcode: 'N22 5BN',
-      address: '1 Westbury Avenue, Wood Green, London',
-      latitude: 51.5994,
-      longitude: -0.1059,
-      region: 'London'
+      postcode: 'N22 6SA',
+      address: 'Westbury Avenue',
+      latitude: 51.6023,
+      longitude: -0.1045,
+      region: 'Greater London'
     },
     {
       name: 'Manchester (Cheetham Hill)',
-      postcode: 'M8 8EP',
-      address: '411 Cheetham Hill Road, Manchester',
-      latitude: 53.5141,
-      longitude: -2.2436,
-      region: 'North West'
+      postcode: 'M8 8UF',
+      address: 'Waterloo Road',
+      latitude: 53.5123,
+      longitude: -2.2434,
+      region: 'Greater Manchester'
     },
     {
-      name: 'Birmingham (Garretts Green)',
-      postcode: 'B33 0SH',
-      address: 'Garretts Green Lane, Birmingham',
-      latitude: 52.4622,
-      longitude: -1.7840,
+      name: 'Birmingham (South Yardley)',
+      postcode: 'B25 8HU',
+      address: 'Coventry Road',
+      latitude: 52.4569,
+      longitude: -1.8207,
       region: 'West Midlands'
     },
     {
