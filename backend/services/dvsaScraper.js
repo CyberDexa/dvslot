@@ -203,7 +203,7 @@ class DVSAScraperService {
   async extractSlots(page, testCenter) {
     try {
       // Wait for the slots to load (adjust selector based on actual DVSA structure)
-      await page.waitForTimeout(3000);
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // Extract slots - this needs to be adapted to actual DVSA HTML structure
       const slots = await page.evaluate((centerName) => {
