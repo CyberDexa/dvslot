@@ -225,7 +225,7 @@ class Scheduler {
       isInitialized: this.isInitialized,
       tasks: Array.from(this.tasks.entries()).map(([name, task]) => ({
         name,
-        running: task.getStatus() === 'scheduled'
+        running: task.running || false
       }))
     };
   }
