@@ -50,8 +50,264 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API v1 Routes
-const apiV1 = express.Router();
+// Postcode lookup endpoint
+apiV1.get('/postcode/:postcode', async (req, res) => {
+  try {
+    const { postcode } = req.params;
+    
+    if (!postcode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Postcode is required'
+      });
+    }
+
+    // Clean and format postcode
+    const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
+    
+    // For now, return mock coordinates for UK postcodes
+    // In production, you'd use a proper geocoding service like Google Maps API or Postcodes.io
+    const mockCoordinates = {
+      'EH546EG': { lat: 55.8833, lng: -3.5167 }, // Livingston, Scotland
+      'SW11': { lat: 51.4613, lng: -0.1406 },   // Battersea, London
+      'Birmingham': { lat: 52.4862, lng: -1.8904 }, // Birmingham
+      'Manchester': { lat: 53.4808, lng: -2.2426 }, // Manchester
+      'Glasgow': { lat: 55.8642, lng: -4.2518 },    // Glasgow
+      'Liverpool': { lat: 53.4084, lng: -2.9916 },  // Liverpool
+      'Leeds': { lat: 53.7960, lng: -1.5471 },      // Leeds
+      'Sheffield': { lat: 53.3811, lng: -1.4701 },  // Sheffield
+      'Edinburgh': { lat: 55.9533, lng: -3.1883 },  // Edinburgh
+      'Cardiff': { lat: 51.4816, lng: -3.1791 },    // Cardiff
+      'Bristol': { lat: 51.4545, lng: -2.5879 },    // Bristol
+      'Newcastle': { lat: 54.9783, lng: -1.6178 },  // Newcastle
+      'Nottingham': { lat: 52.9548, lng: -1.1581 }, // Nottingham
+      'Leicester': { lat: 52.6369, lng: -1.1398 },  // Leicester
+      'Southampton': { lat: 50.9097, lng: -1.4044 }, // Southampton
+      'Portsmouth': { lat: 50.8198, lng: -1.0880 },  // Portsmouth
+      'Oxford': { lat: 51.7520, lng: -1.2577 },     // Oxford
+      'Cambridge': { lat: 52.2053, lng: 0.1218 },   // Cambridge
+      'Brighton': { lat: 50.8225, lng: -0.1372 },   // Brighton
+      'Plymouth': { lat: 50.3755, lng: -4.1427 },   // Plymouth
+      'Exeter': { lat: 50.7184, lng: -3.5339 },     // Exeter
+      'Norwich': { lat: 52.6309, lng: 1.2974 },     // Norwich
+      'Ipswich': { lat: 52.0567, lng: 1.1482 },     // Ipswich
+      'York': { lat: 53.9590, lng: -1.0815 },       // York
+      'Hull': { lat: 53.7676, lng: -0.3274 },       // Hull
+      'Preston': { lat: 53.7632, lng: -2.7031 },    // Preston
+      'Blackpool': { lat: 53.8175, lng: -3.0357 },  // Blackpool
+      'Blackburn': { lat: 53.7486, lng: -2.4842 },  // Blackburn
+      'Bolton': { lat: 53.5783, lng: -2.4299 },     // Bolton
+      'Wigan': { lat: 53.5450, lng: -2.6324 },      // Wigan
+      'Warrington': { lat: 53.3900, lng: -2.5970 }, // Warrington
+      'Stockport': { lat: 53.4083, lng: -2.1494 },  // Stockport
+      'Oldham': { lat: 53.5409, lng: -2.1114 },     // Oldham
+      'Rochdale': { lat: 53.6097, lng: -2.1561 },   // Rochdale
+      'Salford': { lat: 53.4875, lng: -2.2901 },    // Salford
+      'StHelens': { lat: 53.4539, lng: -2.7369 },   // St Helens
+      'Widnes': { lat: 53.3631, lng: -2.7303 },     // Widnes
+      'Runcorn': { lat: 53.3417, lng: -2.7311 },    // Runcorn
+      'Crewe': { lat: 53.0998, lng: -2.4443 },      // Crewe
+      'Macclesfield': { lat: 53.2587, lng: -2.1256 }, // Macclesfield
+      'Chester': { lat: 53.1934, lng: -2.8931 },    // Chester
+      'Wrexham': { lat: 53.0466, lng: -2.9938 },    // Wrexham
+      'Swansea': { lat: 51.6214, lng: -3.9436 },    // Swansea
+      'Newport': { lat: 51.5842, lng: -2.9977 },    // Newport
+      'Aberdeen': { lat: 57.1497, lng: -2.0943 },   // Aberdeen
+      'Dundee': { lat: 56.4620, lng: -2.9707 },     // Dundee
+      'Inverness': { lat: 57.4778, lng: -4.2247 },  // Inverness
+      'Stirling': { lat: 56.1165, lng: -3.9369 },   // Stirling
+      'Perth': { lat: 56.3967, lng: -3.4314 },      // Perth
+      'Dundee': { lat: 56.4620, lng: -2.9707 },     // Dundee
+      'Falkirk': { lat: 56.0019, lng: -3.7833 },    // Falkirk
+      'Ayr': { lat: 55.4586, lng: -4.6292 },        // Ayr
+      'Kilmarnock': { lat: 55.6117, lng: -4.4989 }, // Kilmarnock
+      'Dumfries': { lat: 55.0709, lng: -3.6051 },   // Dumfries
+      'Galashiels': { lat: 55.6171, lng: -2.8069 }, // Galashiels
+      'Hawick': { lat: 55.4227, lng: -2.7848 },     // Hawick
+      'Selkirk': { lat: 55.5474, lng: -2.8391 },    // Selkirk
+      'Peebles': { lat: 55.6511, lng: -3.1889 },    // Peebles
+      'Jedburgh': { lat: 55.4794, lng: -2.5520 },   // Jedburgh
+      'Kelso': { lat: 55.5982, lng: -2.4333 },      // Kelso
+      'BerwickUponTweed': { lat: 55.7708, lng: -2.0031 }, // Berwick-upon-Tweed
+      'Carlisle': { lat: 54.8924, lng: -2.9324 },   // Carlisle
+      'Whitehaven': { lat: 54.5491, lng: -3.5847 }, // Whitehaven
+      'Workington': { lat: 54.6436, lng: -3.5441 }, // Workington
+      'BarrowInFurness': { lat: 54.1080, lng: -3.2189 }, // Barrow-in-Furness
+      'Millom': { lat: 54.2108, lng: -3.2719 },     // Millom
+      'Ulverston': { lat: 54.1959, lng: -3.0963 },  // Ulverston
+      'GrangeOverSands': { lat: 54.1931, lng: -2.9094 }, // Grange-over-Sands
+      'Kendal': { lat: 54.3275, lng: -2.7476 },     // Kendal
+      'Windermere': { lat: 54.3792, lng: -2.9067 }, // Windermere
+      'Ambleside': { lat: 54.4289, lng: -2.9613 },  // Ambleside
+      'Keswick': { lat: 54.6013, lng: -3.1326 },    // Keswick
+      'Cockermouth': { lat: 54.6621, lng: -3.3598 }, // Cockermouth
+      'Penrith': { lat: 54.6641, lng: -2.7527 },    // Penrith
+      'Alston': { lat: 54.8110, lng: -2.4398 },     // Alston
+      'Hexham': { lat: 54.9711, lng: -2.1017 },     // Hexham
+      'Haltwhistle': { lat: 54.9700, lng: -2.4567 }, // Haltwhistle
+      'Brampton': { lat: 54.9441, lng: -2.7347 },   // Brampton
+      'Wigton': { lat: 54.8250, lng: -3.1597 },     // Wigton
+      'Maryport': { lat: 54.7143, lng: -3.4957 },   // Maryport
+      'Silloth': { lat: 54.8694, lng: -3.3872 },    // Silloth
+      'Wigton': { lat: 54.8250, lng: -3.1597 },     // Wigton
+      'Aspatria': { lat: 54.7661, lng: -3.3278 },   // Aspatria
+      'BownessOnSolway': { lat: 54.9489, lng: -3.2150 }, // Bowness-on-Solway
+      'Annan': { lat: 54.9861, lng: -3.2567 },      // Annan
+      'Lockerbie': { lat: 55.1225, lng: -3.3539 },  // Lockerbie
+      'Gretna': { lat: 54.9964, lng: -3.0639 },     // Gretna
+      'Longtown': { lat: 55.0108, lng: -2.9672 },   // Longtown
+      'Brampton': { lat: 54.9441, lng: -2.7347 },   // Brampton
+      'Gilsland': { lat: 54.9875, lng: -2.5789 },   // Gilsland
+      'Haltwhistle': { lat: 54.9700, lng: -2.4567 }, // Haltwhistle
+      'HaydonBridge': { lat: 54.9744, lng: -2.2472 }, // Haydon Bridge
+      'Hexham': { lat: 54.9711, lng: -2.1017 },     // Hexham
+      'Corbridge': { lat: 54.9739, lng: -2.0178 },  // Corbridge
+      'Prudhoe': { lat: 54.9617, lng: -1.8544 },    // Prudhoe
+      'Stocksfield': { lat: 54.9472, lng: -1.9172 }, // Stocksfield
+      'Wylam': { lat: 54.9747, lng: -1.8144 },      // Wylam
+      'Newcastle': { lat: 54.9783, lng: -1.6178 },  // Newcastle
+      'Gateshead': { lat: 54.9625, lng: -1.6017 },  // Gateshead
+      'Washington': { lat: 54.9000, lng: -1.5167 }, // Washington
+      'Sunderland': { lat: 54.9069, lng: -1.3838 }, // Sunderland
+      'SouthShields': { lat: 54.9986, lng: -1.4291 }, // South Shields
+      'NorthShields': { lat: 55.0097, lng: -1.4448 }, // North Shields
+      'WhitleyBay': { lat: 55.0397, lng: -1.4472 },  // Whitley Bay
+      'Tynemouth': { lat: 55.0172, lng: -1.4250 },   // Tynemouth
+      'Wallsend': { lat: 54.9911, lng: -1.5344 },    // Wallsend
+      'Jarrow': { lat: 54.9783, lng: -1.4844 },      // Jarrow
+      'Hebburn': { lat: 54.9731, lng: -1.5144 },     // Hebburn
+      'Blaydon': { lat: 54.9661, lng: -1.7139 },     // Blaydon
+      'Ryton': { lat: 54.9722, lng: -1.7617 },       // Ryton
+      'Newburn': { lat: 54.9875, lng: -1.7444 },     // Newburn
+      'Wylam': { lat: 54.9747, lng: -1.8144 },       // Wylam
+      'Prudhoe': { lat: 54.9617, lng: -1.8544 },     // Prudhoe
+      'Stocksfield': { lat: 54.9472, lng: -1.9172 }, // Stocksfield
+      'Corbridge': { lat: 54.9739, lng: -2.0178 },   // Corbridge
+      'HaydonBridge': { lat: 54.9744, lng: -2.2472 }, // Haydon Bridge
+      'Haltwhistle': { lat: 54.9700, lng: -2.4567 }, // Haltwhistle
+      'Gilsland': { lat: 54.9875, lng: -2.5789 },    // Gilsland
+      'Longtown': { lat: 55.0108, lng: -2.9672 },    // Longtown
+      'Gretna': { lat: 54.9964, lng: -3.0639 },      // Gretna
+      'Lockerbie': { lat: 55.1225, lng: -3.3539 },   // Lockerbie
+      'Annan': { lat: 54.9861, lng: -3.2567 },       // Annan
+      'BownessOnSolway': { lat: 54.9489, lng: -3.2150 }, // Bowness-on-Solway
+      'Aspatria': { lat: 54.7661, lng: -3.3278 },    // Aspatria
+      'Wigton': { lat: 54.8250, lng: -3.1597 },      // Wigton
+      'Brampton': { lat: 54.9441, lng: -2.7347 },    // Brampton
+      'Maryport': { lat: 54.7143, lng: -3.4957 },    // Maryport
+      'Silloth': { lat: 54.8694, lng: -3.3872 },     // Silloth
+      'Cockermouth': { lat: 54.6621, lng: -3.3598 }, // Cockermouth
+      'Keswick': { lat: 54.6013, lng: -3.1326 },     // Keswick
+      'Ambleside': { lat: 54.4289, lng: -2.9613 },   // Ambleside
+      'Windermere': { lat: 54.3792, lng: -2.9067 },  // Windermere
+      'Kendal': { lat: 54.3275, lng: -2.7476 },      // Kendal
+      'GrangeOverSands': { lat: 54.1931, lng: -2.9094 }, // Grange-over-Sands
+      'Ulverston': { lat: 54.1959, lng: -3.0963 },   // Ulverston
+      'Millom': { lat: 54.2108, lng: -3.2719 },      // Millom
+      'BarrowInFurness': { lat: 54.1080, lng: -3.2189 }, // Barrow-in-Furness
+      'Workington': { lat: 54.6436, lng: -3.5441 },  // Workington
+      'Whitehaven': { lat: 54.5491, lng: -3.5847 },  // Whitehaven
+      'Carlisle': { lat: 54.8924, lng: -2.9324 },    // Carlisle
+      'Penrith': { lat: 54.6641, lng: -2.7527 },     // Penrith
+      'Alston': { lat: 54.8110, lng: -2.4398 },      // Alston
+      'BerwickUponTweed': { lat: 55.7708, lng: -2.0031 }, // Berwick-upon-Tweed
+      'Kelso': { lat: 55.5982, lng: -2.4333 },       // Kelso
+      'Jedburgh': { lat: 55.4794, lng: -2.5520 },    // Jedburgh
+      'Peebles': { lat: 55.6511, lng: -3.1889 },     // Peebles
+      'Selkirk': { lat: 55.5474, lng: -2.8391 },     // Selkirk
+      'Hawick': { lat: 55.4227, lng: -2.7848 },      // Hawick
+      'Galashiels': { lat: 55.6171, lng: -2.8069 },  // Galashiels
+      'Dumfries': { lat: 55.0709, lng: -3.6051 },    // Dumfries
+      'Kilmarnock': { lat: 55.6117, lng: -4.4989 },  // Kilmarnock
+      'Ayr': { lat: 55.4586, lng: -4.6292 },         // Ayr
+      'Falkirk': { lat: 56.0019, lng: -3.7833 },     // Falkirk
+      'Perth': { lat: 56.3967, lng: -3.4314 },       // Perth
+      'Stirling': { lat: 56.1165, lng: -3.9369 },    // Stirling
+      'Inverness': { lat: 57.4778, lng: -4.2247 },   // Inverness
+      'Dundee': { lat: 56.4620, lng: -2.9707 },      // Dundee
+      'Aberdeen': { lat: 57.1497, lng: -2.0943 },    // Aberdeen
+      'Newport': { lat: 51.5842, lng: -2.9977 },     // Newport
+      'Swansea': { lat: 51.6214, lng: -3.9436 },     // Swansea
+      'Wrexham': { lat: 53.0466, lng: -2.9938 },     // Wrexham
+      'Chester': { lat: 53.1934, lng: -2.8931 },     // Chester
+      'Macclesfield': { lat: 53.2587, lng: -2.1256 }, // Macclesfield
+      'Crewe': { lat: 53.0998, lng: -2.4443 },       // Crewe
+      'Runcorn': { lat: 53.3417, lng: -2.7311 },     // Runcorn
+      'Widnes': { lat: 53.3631, lng: -2.7303 },      // Widnes
+      'StHelens': { lat: 53.4539, lng: -2.7369 },    // St Helens
+      'Salford': { lat: 53.4875, lng: -2.2901 },     // Salford
+      'Rochdale': { lat: 53.6097, lng: -2.1561 },    // Rochdale
+      'Oldham': { lat: 53.5409, lng: -2.1114 },      // Oldham
+      'Stockport': { lat: 53.4083, lng: -2.1494 },   // Stockport
+      'Warrington': { lat: 53.3900, lng: -2.5970 },  // Warrington
+      'Wigan': { lat: 53.5450, lng: -2.6324 },       // Wigan
+      'Bolton': { lat: 53.5783, lng: -2.4299 },      // Bolton
+      'Blackburn': { lat: 53.7486, lng: -2.4842 },   // Blackburn
+      'Blackpool': { lat: 53.8175, lng: -3.0357 },   // Blackpool
+      'Preston': { lat: 53.7632, lng: -2.7031 },     // Preston
+      'Hull': { lat: 53.7676, lng: -0.3274 },        // Hull
+      'York': { lat: 53.9590, lng: -1.0815 },        // York
+      'Ipswich': { lat: 52.0567, lng: 1.1482 },      // Ipswich
+      'Norwich': { lat: 52.6309, lng: 1.2974 },      // Norwich
+      'Exeter': { lat: 50.7184, lng: -3.5339 },      // Exeter
+      'Plymouth': { lat: 50.3755, lng: -4.1427 },    // Plymouth
+      'Brighton': { lat: 50.8225, lng: -0.1372 },    // Brighton
+      'Cambridge': { lat: 52.2053, lng: 0.1218 },    // Cambridge
+      'Oxford': { lat: 51.7520, lng: -1.2577 },      // Oxford
+      'Portsmouth': { lat: 50.8198, lng: -1.0880 },  // Portsmouth
+      'Southampton': { lat: 50.9097, lng: -1.4044 }, // Southampton
+      'Leicester': { lat: 52.6369, lng: -1.1398 },   // Leicester
+      'Nottingham': { lat: 52.9548, lng: -1.1581 },  // Nottingham
+      'Newcastle': { lat: 54.9783, lng: -1.6178 },   // Newcastle
+      'Bristol': { lat: 51.4545, lng: -2.5879 },     // Bristol
+      'Cardiff': { lat: 51.4816, lng: -3.1791 },     // Cardiff
+      'Edinburgh': { lat: 55.9533, lng: -3.1883 },   // Edinburgh
+      'Sheffield': { lat: 53.3811, lng: -1.4701 },   // Sheffield
+      'Leeds': { lat: 53.7960, lng: -1.5471 },       // Leeds
+      'Liverpool': { lat: 53.4084, lng: -2.9916 },   // Liverpool
+      'Glasgow': { lat: 55.8642, lng: -4.2518 },     // Glasgow
+      'Manchester': { lat: 53.4808, lng: -2.2426 },  // Manchester
+      'Birmingham': { lat: 52.4862, lng: -1.8904 },  // Birmingham
+      'London': { lat: 51.5074, lng: -0.1278 },      // London
+    };
+
+    // Try to find exact match first
+    let coordinates = mockCoordinates[cleanPostcode];
+    
+    // If no exact match, try partial match (first part of postcode)
+    if (!coordinates) {
+      const partialPostcode = cleanPostcode.substring(0, Math.min(cleanPostcode.length, 4));
+      for (const [key, value] of Object.entries(mockCoordinates)) {
+        if (key.toUpperCase().startsWith(partialPostcode)) {
+          coordinates = value;
+          break;
+        }
+      }
+    }
+
+    // If still no match, use London as default
+    if (!coordinates) {
+      coordinates = mockCoordinates['London'];
+      logger.warn(`Postcode ${postcode} not found, using London coordinates as fallback`);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        postcode: postcode,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+        accuracy: coordinates === mockCoordinates['London'] ? 'approximate' : 'exact'
+      }
+    });
+  } catch (error) {
+    logger.error('Postcode lookup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 // Test centers endpoints
 apiV1.get('/test-centers/nearby', async (req, res) => {
@@ -735,6 +991,265 @@ apiV1.get('/alerts/stats', async (req, res) => {
 
 // Mount API v1 routes
 app.use('/api/v1', apiV1);
+
+// Postcode lookup endpoint (direct access for mobile app)
+app.get('/postcode/:postcode', async (req, res) => {
+  try {
+    const { postcode } = req.params;
+    
+    if (!postcode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Postcode is required'
+      });
+    }
+
+    // Clean and format postcode
+    const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
+    
+    // For now, return mock coordinates for UK postcodes
+    // In production, you'd use a proper geocoding service like Google Maps API or Postcodes.io
+    const mockCoordinates = {
+      'EH546EG': { lat: 55.8833, lng: -3.5167 }, // Livingston, Scotland
+      'SW11': { lat: 51.4613, lng: -0.1406 },   // Battersea, London
+      'Birmingham': { lat: 52.4862, lng: -1.8904 }, // Birmingham
+      'Manchester': { lat: 53.4808, lng: -2.2426 }, // Manchester
+      'Glasgow': { lat: 55.8642, lng: -4.2518 },    // Glasgow
+      'Liverpool': { lat: 53.4084, lng: -2.9916 },  // Liverpool
+      'Leeds': { lat: 53.7960, lng: -1.5471 },      // Leeds
+      'Sheffield': { lat: 53.3811, lng: -1.4701 },  // Sheffield
+      'Edinburgh': { lat: 55.9533, lng: -3.1883 },  // Edinburgh
+      'Cardiff': { lat: 51.4816, lng: -3.1791 },    // Cardiff
+      'Bristol': { lat: 51.4545, lng: -2.5879 },    // Bristol
+      'Newcastle': { lat: 54.9783, lng: -1.6178 },  // Newcastle
+      'Nottingham': { lat: 52.9548, lng: -1.1581 }, // Nottingham
+      'Leicester': { lat: 52.6369, lng: -1.1398 },  // Leicester
+      'Southampton': { lat: 50.9097, lng: -1.4044 }, // Southampton
+      'Portsmouth': { lat: 50.8198, lng: -1.0880 },  // Portsmouth
+      'Oxford': { lat: 51.7520, lng: -1.2577 },     // Oxford
+      'Cambridge': { lat: 52.2053, lng: 0.1218 },   // Cambridge
+      'Brighton': { lat: 50.8225, lng: -0.1372 },   // Brighton
+      'Plymouth': { lat: 50.3755, lng: -4.1427 },   // Plymouth
+      'Exeter': { lat: 50.7184, lng: -3.5339 },     // Exeter
+      'Norwich': { lat: 52.6309, lng: 1.2974 },     // Norwich
+      'Ipswich': { lat: 52.0567, lng: 1.1482 },     // Ipswich
+      'York': { lat: 53.9590, lng: -1.0815 },       // York
+      'Hull': { lat: 53.7676, lng: -0.3274 },       // Hull
+      'Preston': { lat: 53.7632, lng: -2.7031 },    // Preston
+      'Blackpool': { lat: 53.8175, lng: -3.0357 },  // Blackpool
+      'Blackburn': { lat: 53.7486, lng: -2.4842 },  // Blackburn
+      'Bolton': { lat: 53.5783, lng: -2.4299 },     // Bolton
+      'Wigan': { lat: 53.5450, lng: -2.6324 },      // Wigan
+      'Warrington': { lat: 53.3900, lng: -2.5970 }, // Warrington
+      'Stockport': { lat: 53.4083, lng: -2.1494 },  // Stockport
+      'Oldham': { lat: 53.5409, lng: -2.1114 },     // Oldham
+      'Rochdale': { lat: 53.6097, lng: -2.1561 },   // Rochdale
+      'Salford': { lat: 53.4875, lng: -2.2901 },    // Salford
+      'StHelens': { lat: 53.4539, lng: -2.7369 },   // St Helens
+      'Widnes': { lat: 53.3631, lng: -2.7303 },     // Widnes
+      'Runcorn': { lat: 53.3417, lng: -2.7311 },    // Runcorn
+      'Crewe': { lat: 53.0998, lng: -2.4443 },      // Crewe
+      'Macclesfield': { lat: 53.2587, lng: -2.1256 }, // Macclesfield
+      'Chester': { lat: 53.1934, lng: -2.8931 },    // Chester
+      'Wrexham': { lat: 53.0466, lng: -2.9938 },    // Wrexham
+      'Swansea': { lat: 51.6214, lng: -3.9436 },    // Swansea
+      'Newport': { lat: 51.5842, lng: -2.9977 },    // Newport
+      'Aberdeen': { lat: 57.1497, lng: -2.0943 },   // Aberdeen
+      'Dundee': { lat: 56.4620, lng: -2.9707 },     // Dundee
+      'Inverness': { lat: 57.4778, lng: -4.2247 },  // Inverness
+      'Stirling': { lat: 56.1165, lng: -3.9369 },   // Stirling
+      'Perth': { lat: 56.3967, lng: -3.4314 },      // Perth
+      'Dundee': { lat: 56.4620, lng: -2.9707 },     // Dundee
+      'Falkirk': { lat: 56.0019, lng: -3.7833 },    // Falkirk
+      'Ayr': { lat: 55.4586, lng: -4.6292 },        // Ayr
+      'Kilmarnock': { lat: 55.6117, lng: -4.4989 }, // Kilmarnock
+      'Dumfries': { lat: 55.0709, lng: -3.6051 },   // Dumfries
+      'Galashiels': { lat: 55.6171, lng: -2.8069 }, // Galashiels
+      'Hawick': { lat: 55.4227, lng: -2.7848 },     // Hawick
+      'Selkirk': { lat: 55.5474, lng: -2.8391 },    // Selkirk
+      'Peebles': { lat: 55.6511, lng: -3.1889 },    // Peebles
+      'Jedburgh': { lat: 55.4794, lng: -2.5520 },   // Jedburgh
+      'Kelso': { lat: 55.5982, lng: -2.4333 },      // Kelso
+      'BerwickUponTweed': { lat: 55.7708, lng: -2.0031 }, // Berwick-upon-Tweed
+      'Carlisle': { lat: 54.8924, lng: -2.9324 },   // Carlisle
+      'Whitehaven': { lat: 54.5491, lng: -3.5847 }, // Whitehaven
+      'Workington': { lat: 54.6436, lng: -3.5441 }, // Workington
+      'BarrowInFurness': { lat: 54.1080, lng: -3.2189 }, // Barrow-in-Furness
+      'Millom': { lat: 54.2108, lng: -3.2719 },     // Millom
+      'Ulverston': { lat: 54.1959, lng: -3.0963 },  // Ulverston
+      'GrangeOverSands': { lat: 54.1931, lng: -2.9094 }, // Grange-over-Sands
+      'Kendal': { lat: 54.3275, lng: -2.7476 },     // Kendal
+      'Windermere': { lat: 54.3792, lng: -2.9067 }, // Windermere
+      'Ambleside': { lat: 54.4289, lng: -2.9613 },  // Ambleside
+      'Keswick': { lat: 54.6013, lng: -3.1326 },    // Keswick
+      'Cockermouth': { lat: 54.6621, lng: -3.3598 }, // Cockermouth
+      'Penrith': { lat: 54.6641, lng: -2.7527 },     // Penrith
+      'Alston': { lat: 54.8110, lng: -2.4398 },     // Alston
+      'Hexham': { lat: 54.9711, lng: -2.1017 },     // Hexham
+      'Haltwhistle': { lat: 54.9700, lng: -2.4567 }, // Haltwhistle
+      'Brampton': { lat: 54.9441, lng: -2.7347 },   // Brampton
+      'Wigton': { lat: 54.8250, lng: -3.1597 },     // Wigton
+      'Maryport': { lat: 54.7143, lng: -3.4957 },   // Maryport
+      'Silloth': { lat: 54.8694, lng: -3.3872 },    // Silloth
+      'Wigton': { lat: 54.8250, lng: -3.1597 },     // Wigton
+      'Aspatria': { lat: 54.7661, lng: -3.3278 },   // Aspatria
+      'BownessOnSolway': { lat: 54.9489, lng: -3.2150 }, // Bowness-on-Solway
+      'Annan': { lat: 54.9861, lng: -3.2567 },      // Annan
+      'Lockerbie': { lat: 55.1225, lng: -3.3539 },  // Lockerbie
+      'Gretna': { lat: 54.9964, lng: -3.0639 },     // Gretna
+      'Longtown': { lat: 55.0108, lng: -2.9672 },   // Longtown
+      'Brampton': { lat: 54.9441, lng: -2.7347 },   // Brampton
+      'Gilsland': { lat: 54.9875, lng: -2.5789 },   // Gilsland
+      'Haltwhistle': { lat: 54.9700, lng: -2.4567 }, // Haltwhistle
+      'HaydonBridge': { lat: 54.9744, lng: -2.2472 }, // Haydon Bridge
+      'Hexham': { lat: 54.9711, lng: -2.1017 },     // Hexham
+      'Corbridge': { lat: 54.9739, lng: -2.0178 },  // Corbridge
+      'Prudhoe': { lat: 54.9617, lng: -1.8544 },    // Prudhoe
+      'Stocksfield': { lat: 54.9472, lng: -1.9172 }, // Stocksfield
+      'Wylam': { lat: 54.9747, lng: -1.8144 },      // Wylam
+      'Newcastle': { lat: 54.9783, lng: -1.6178 },  // Newcastle
+      'Gateshead': { lat: 54.9625, lng: -1.6017 },  // Gateshead
+      'Washington': { lat: 54.9000, lng: -1.5167 }, // Washington
+      'Sunderland': { lat: 54.9069, lng: -1.3838 }, // Sunderland
+      'SouthShields': { lat: 54.9986, lng: -1.4291 }, // South Shields
+      'NorthShields': { lat: 55.0097, lng: -1.4448 }, // North Shields
+      'WhitleyBay': { lat: 55.0397, lng: -1.4472 },  // Whitley Bay
+      'Tynemouth': { lat: 55.0172, lng: -1.4250 },   // Tynemouth
+      'Wallsend': { lat: 54.9911, lng: -1.5344 },    // Wallsend
+      'Jarrow': { lat: 54.9783, lng: -1.4844 },      // Jarrow
+      'Hebburn': { lat: 54.9731, lng: -1.5144 },     // Hebburn
+      'Blaydon': { lat: 54.9661, lng: -1.7139 },     // Blaydon
+      'Ryton': { lat: 54.9722, lng: -1.7617 },       // Ryton
+      'Newburn': { lat: 54.9875, lng: -1.7444 },     // Newburn
+      'Wylam': { lat: 54.9747, lng: -1.8144 },       // Wylam
+      'Prudhoe': { lat: 54.9617, lng: -1.8544 },     // Prudhoe
+      'Stocksfield': { lat: 54.9472, lng: -1.9172 }, // Stocksfield
+      'Corbridge': { lat: 54.9739, lng: -2.0178 },   // Corbridge
+      'HaydonBridge': { lat: 54.9744, lng: -2.2472 }, // Haydon Bridge
+      'Haltwhistle': { lat: 54.9700, lng: -2.4567 }, // Haltwhistle
+      'Gilsland': { lat: 54.9875, lng: -2.5789 },    // Gilsland
+      'Longtown': { lat: 55.0108, lng: -2.9672 },    // Longtown
+      'Gretna': { lat: 54.9964, lng: -3.0639 },      // Gretna
+      'Lockerbie': { lat: 55.1225, lng: -3.3539 },   // Lockerbie
+      'Annan': { lat: 54.9861, lng: -3.2567 },       // Annan
+      'BownessOnSolway': { lat: 54.9489, lng: -3.2150 }, // Bowness-on-Solway
+      'Aspatria': { lat: 54.7661, lng: -3.3278 },    // Aspatria
+      'Wigton': { lat: 54.8250, lng: -3.1597 },      // Wigton
+      'Brampton': { lat: 54.9441, lng: -2.7347 },    // Brampton
+      'Maryport': { lat: 54.7143, lng: -3.4957 },    // Maryport
+      'Silloth': { lat: 54.8694, lng: -3.3872 },     // Silloth
+      'Cockermouth': { lat: 54.6621, lng: -3.3598 }, // Cockermouth
+      'Keswick': { lat: 54.6013, lng: -3.1326 },     // Keswick
+      'Ambleside': { lat: 54.4289, lng: -2.9613 },   // Ambleside
+      'Windermere': { lat: 54.3792, lng: -2.9067 },  // Windermere
+      'Kendal': { lat: 54.3275, lng: -2.7476 },      // Kendal
+      'GrangeOverSands': { lat: 54.1931, lng: -2.9094 }, // Grange-over-Sands
+      'Ulverston': { lat: 54.1959, lng: -3.0963 },   // Ulverston
+      'Millom': { lat: 54.2108, lng: -3.2719 },      // Millom
+      'BarrowInFurness': { lat: 54.1080, lng: -3.2189 }, // Barrow-in-Furness
+      'Workington': { lat: 54.6436, lng: -3.5441 },  // Workington
+      'Whitehaven': { lat: 54.5491, lng: -3.5847 },  // Whitehaven
+      'Carlisle': { lat: 54.8924, lng: -2.9324 },    // Carlisle
+      'Penrith': { lat: 54.6641, lng: -2.7527 },     // Penrith
+      'Alston': { lat: 54.8110, lng: -2.4398 },      // Alston
+      'BerwickUponTweed': { lat: 55.7708, lng: -2.0031 }, // Berwick-upon-Tweed
+      'Kelso': { lat: 55.5982, lng: -2.4333 },       // Kelso
+      'Jedburgh': { lat: 55.4794, lng: -2.5520 },    // Jedburgh
+      'Peebles': { lat: 55.6511, lng: -3.1889 },     // Peebles
+      'Selkirk': { lat: 55.5474, lng: -2.8391 },     // Selkirk
+      'Hawick': { lat: 55.4227, lng: -2.7848 },      // Hawick
+      'Galashiels': { lat: 55.6171, lng: -2.8069 },  // Galashiels
+      'Dumfries': { lat: 55.0709, lng: -3.6051 },    // Dumfries
+      'Kilmarnock': { lat: 55.6117, lng: -4.4989 },  // Kilmarnock
+      'Ayr': { lat: 55.4586, lng: -4.6292 },         // Ayr
+      'Falkirk': { lat: 56.0019, lng: -3.7833 },     // Falkirk
+      'Perth': { lat: 56.3967, lng: -3.4314 },       // Perth
+      'Stirling': { lat: 56.1165, lng: -3.9369 },    // Stirling
+      'Inverness': { lat: 57.4778, lng: -4.2247 },   // Inverness
+      'Dundee': { lat: 56.4620, lng: -2.9707 },      // Dundee
+      'Aberdeen': { lat: 57.1497, lng: -2.0943 },    // Aberdeen
+      'Newport': { lat: 51.5842, lng: -2.9977 },     // Newport
+      'Swansea': { lat: 51.6214, lng: -3.9436 },     // Swansea
+      'Wrexham': { lat: 53.0466, lng: -2.9938 },     // Wrexham
+      'Chester': { lat: 53.1934, lng: -2.8931 },     // Chester
+      'Macclesfield': { lat: 53.2587, lng: -2.1256 }, // Macclesfield
+      'Crewe': { lat: 53.0998, lng: -2.4443 },       // Crewe
+      'Runcorn': { lat: 53.3417, lng: -2.7311 },     // Runcorn
+      'Widnes': { lat: 53.3631, lng: -2.7303 },      // Widnes
+      'StHelens': { lat: 53.4539, lng: -2.7369 },    // St Helens
+      'Salford': { lat: 53.4875, lng: -2.2901 },     // Salford
+      'Rochdale': { lat: 53.6097, lng: -2.1561 },    // Rochdale
+      'Oldham': { lat: 53.5409, lng: -2.1114 },      // Oldham
+      'Stockport': { lat: 53.4083, lng: -2.1494 },   // Stockport
+      'Warrington': { lat: 53.3900, lng: -2.5970 },  // Warrington
+      'Wigan': { lat: 53.5450, lng: -2.6324 },       // Wigan
+      'Bolton': { lat: 53.5783, lng: -2.4299 },      // Bolton
+      'Blackburn': { lat: 53.7486, lng: -2.4842 },   // Blackburn
+      'Blackpool': { lat: 53.8175, lng: -3.0357 },   // Blackpool
+      'Preston': { lat: 53.7632, lng: -2.7031 },     // Preston
+      'Hull': { lat: 53.7676, lng: -0.3274 },        // Hull
+      'York': { lat: 53.9590, lng: -1.0815 },        // York
+      'Ipswich': { lat: 52.0567, lng: 1.1482 },      // Ipswich
+      'Norwich': { lat: 52.6309, lng: 1.2974 },      // Norwich
+      'Exeter': { lat: 50.7184, lng: -3.5339 },      // Exeter
+      'Plymouth': { lat: 50.3755, lng: -4.1427 },    // Plymouth
+      'Brighton': { lat: 50.8225, lng: -0.1372 },    // Brighton
+      'Cambridge': { lat: 52.2053, lng: 0.1218 },    // Cambridge
+      'Oxford': { lat: 51.7520, lng: -1.2577 },      // Oxford
+      'Portsmouth': { lat: 50.8198, lng: -1.0880 },  // Portsmouth
+      'Southampton': { lat: 50.9097, lng: -1.4044 }, // Southampton
+      'Leicester': { lat: 52.6369, lng: -1.1398 },   // Leicester
+      'Nottingham': { lat: 52.9548, lng: -1.1581 },  // Nottingham
+      'Newcastle': { lat: 54.9783, lng: -1.6178 },   // Newcastle
+      'Bristol': { lat: 51.4545, lng: -2.5879 },     // Bristol
+      'Cardiff': { lat: 51.4816, lng: -3.1791 },     // Cardiff
+      'Edinburgh': { lat: 55.9533, lng: -3.1883 },   // Edinburgh
+      'Sheffield': { lat: 53.3811, lng: -1.4701 },   // Sheffield
+      'Leeds': { lat: 53.7960, lng: -1.5471 },       // Leeds
+      'Liverpool': { lat: 53.4084, lng: -2.9916 },   // Liverpool
+      'Glasgow': { lat: 55.8642, lng: -4.2518 },     // Glasgow
+      'Manchester': { lat: 53.4808, lng: -2.2426 },  // Manchester
+      'Birmingham': { lat: 52.4862, lng: -1.8904 },  // Birmingham
+      'London': { lat: 51.5074, lng: -0.1278 },      // London
+    };
+
+    // Try to find exact match first
+    let coordinates = mockCoordinates[cleanPostcode];
+    
+    // If no exact match, try partial match (first part of postcode)
+    if (!coordinates) {
+      const partialPostcode = cleanPostcode.substring(0, Math.min(cleanPostcode.length, 4));
+      for (const [key, value] of Object.entries(mockCoordinates)) {
+        if (key.toUpperCase().startsWith(partialPostcode)) {
+          coordinates = value;
+          break;
+        }
+      }
+    }
+
+    // If still no match, use London as default
+    if (!coordinates) {
+      coordinates = mockCoordinates['London'];
+      logger.warn(`Postcode ${postcode} not found, using London coordinates as fallback`);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        postcode: postcode,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+        accuracy: coordinates === mockCoordinates['London'] ? 'approximate' : 'exact'
+      }
+    });
+  } catch (error) {
+    logger.error('Postcode lookup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 // Manual scraping endpoint (for testing/admin use)
 app.post('/api/scrape', async (req, res) => {
