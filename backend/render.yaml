@@ -8,6 +8,7 @@ services:
     branch: main
     rootDir: backend  # Important: Tell Render to look in backend folder
     buildCommand: |
+      # Install system Chrome
       apt-get update && apt-get install -y \
         wget \
         gnupg \
@@ -26,7 +27,8 @@ services:
       echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
       apt-get update && \
       apt-get install -y google-chrome-stable && \
-      npm ci
+      npm ci && \
+      npx puppeteer browsers install chrome
     startCommand: npm start
     healthCheckPath: /health
     
@@ -52,9 +54,11 @@ services:
       - key: LOG_LEVEL
         value: info
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: "true"
+        value: "false"
       - key: PUPPETEER_EXECUTABLE_PATH
         value: "/usr/bin/google-chrome-stable"
+      - key: DISABLE_SCRAPING
+        value: "false"
         
     # Auto-deploy on git push
     autoDeploy: true

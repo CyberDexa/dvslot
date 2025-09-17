@@ -31,12 +31,53 @@ class DVSAScraperService {
       if (this.browser) {
         return; // Already initialized
       }
+
+      // Check if scraping is disabled
+      if (process.env.DISABLE_SCRAPING === 'true') {
+        logger.warn('⚠️ Scraping is disabled via DISABLE_SCRAPING environment variable');
+        throw new Error('Scraping disabled');
+      }
       
       logger.info('🚀 Starting DVSA Scraper Browser...');
       
-      this.browser = await puppeteer.launch({
+      // Try multiple Chrome executable paths
+      const possibleChromePaths = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium'
+      ];
+
+      // Also check for Puppeteer cache directories
+      try {
+        const glob = require('glob');
+        const puppeteerCachePaths = glob.sync('/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux*/chrome');
+        possibleChromePaths.push(...puppeteerCachePaths);
+      } catch (err) {
+        logger.warn('Could not check Puppeteer cache paths:', err.message);
+      }
+
+      let executablePath = null;
+      
+      // Try to find a working Chrome executable
+      for (const path of possibleChromePaths) {
+        if (path) {
+          try {
+            const fs = require('fs');
+            if (fs.existsSync(path)) {
+              executablePath = path;
+              logger.info(`✅ Found Chrome at: ${path}`);
+              break;
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+      }
+
+      const launchOptions = {
         headless: this.config.headless,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -50,12 +91,18 @@ class DVSAScraperService {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor'
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        executablePath: executablePath || undefined,
         defaultViewport: {
           width: 1366,
           height: 768,
         },
-      });
+      };
+
+      if (executablePath) {
+        launchOptions.executablePath = executablePath;
+      }
+
+      this.browser = await puppeteer.launch(launchOptions);
 
       logger.info('✅ DVSA Scraper Browser initialized');
     } catch (error) {

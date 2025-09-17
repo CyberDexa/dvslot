@@ -21,6 +21,11 @@ class Scheduler {
     const scrapingSchedule = `*/${scrapeInterval} 8-18 * * 1-5`; // Every 30 min, 8AM-6PM, Mon-Fri
     
     this.tasks.set('mainScraping', cron.schedule(scrapingSchedule, async () => {
+      if (process.env.DISABLE_SCRAPING === 'true') {
+        logger.warn('⚠️ Main scraping skipped - scraping disabled');
+        return;
+      }
+      
       logger.info('🚀 Starting scheduled DVSA scraping...');
       
       try {
@@ -34,6 +39,10 @@ class Scheduler {
         
       } catch (error) {
         logger.error('❌ Scheduled scraping failed:', error.message);
+        // If Chrome is not available, temporarily disable scraping
+        if (error.message.includes('Chrome') || error.message.includes('browser')) {
+          logger.warn('⚠️ Chrome issue detected - consider setting DISABLE_SCRAPING=true');
+        }
         // Continue running, don't crash the server
       }
     }, {
@@ -42,12 +51,21 @@ class Scheduler {
 
     // Intensive scraping during peak times (morning and evening)
     this.tasks.set('peakScraping', cron.schedule('*/10 7-9,17-19 * * 1-5', async () => {
+      if (process.env.DISABLE_SCRAPING === 'true') {
+        logger.warn('⚠️ Peak scraping skipped - scraping disabled');
+        return;
+      }
+      
       logger.info('⚡ Starting peak-time intensive scraping...');
       
       try {
         await dvsaScraper.scrapeAllCenters();
       } catch (error) {
         logger.error('❌ Peak scraping failed:', error.message);
+        // If Chrome is not available, temporarily disable scraping
+        if (error.message.includes('Chrome') || error.message.includes('browser')) {
+          logger.warn('⚠️ Chrome issue detected - consider setting DISABLE_SCRAPING=true');
+        }
         // Continue running, don't crash the server
       }
     }, {
