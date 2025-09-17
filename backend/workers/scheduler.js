@@ -33,7 +33,8 @@ class Scheduler {
         }
         
       } catch (error) {
-        logger.error('❌ Scheduled scraping failed:', error);
+        logger.error('❌ Scheduled scraping failed:', error.message);
+        // Continue running, don't crash the server
       }
     }, {
       scheduled: false // Start manually
@@ -46,7 +47,8 @@ class Scheduler {
       try {
         await dvsaScraper.scrapeAllCenters();
       } catch (error) {
-        logger.error('❌ Peak scraping failed:', error);
+        logger.error('❌ Peak scraping failed:', error.message);
+        // Continue running, don't crash the server
       }
     }, {
       scheduled: false
@@ -59,7 +61,8 @@ class Scheduler {
       try {
         await dvsaScraper.scrapeAllCenters();
       } catch (error) {
-        logger.error('❌ Weekend scraping failed:', error);
+        logger.error('❌ Weekend scraping failed:', error.message);
+        // Continue running, don't crash the server
       }
     }, {
       scheduled: false
@@ -73,7 +76,8 @@ class Scheduler {
         await this.cleanupOldSlots();
         logger.info('✅ Daily cleanup completed');
       } catch (error) {
-        logger.error('❌ Daily cleanup failed:', error);
+        logger.error('❌ Daily cleanup failed:', error.message);
+        // Continue running, don't crash the server
       }
     }, {
       scheduled: false
@@ -84,7 +88,8 @@ class Scheduler {
       try {
         await this.performHealthCheck();
       } catch (error) {
-        logger.error('❌ Health check failed:', error);
+        logger.error('❌ Health check failed:', error.message);
+        // Continue running, don't crash the server
       }
     }, {
       scheduled: false
@@ -108,11 +113,12 @@ class Scheduler {
 
     // Run initial scraping after 30 seconds
     setTimeout(async () => {
-      logger.info('🏃 Running initial scraping...');
       try {
+        logger.info('🏃 Running initial scraping...');
         await dvsaScraper.scrapeAllCenters();
       } catch (error) {
-        logger.error('❌ Initial scraping failed:', error);
+        logger.error('❌ Initial scraping failed:', error.message);
+        // Don't crash the server, just log the error
       }
     }, 30000);
   }

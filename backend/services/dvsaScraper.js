@@ -27,7 +27,11 @@ class DVSAScraperService {
   }
 
   async initialize() {
-    if (!this.browser) {
+    try {
+      if (this.browser) {
+        return; // Already initialized
+      }
+      
       logger.info('🚀 Starting DVSA Scraper Browser...');
       
       this.browser = await puppeteer.launch({
@@ -42,7 +46,10 @@ class DVSAScraperService {
           '--disable-gpu',
           '--disable-blink-features=AutomationControlled',
           '--disable-features=VizDisplayCompositor',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
         ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         defaultViewport: {
           width: 1366,
           height: 768,
@@ -50,6 +57,9 @@ class DVSAScraperService {
       });
 
       logger.info('✅ DVSA Scraper Browser initialized');
+    } catch (error) {
+      logger.error('❌ Failed to initialize browser:', error.message);
+      throw error;
     }
   }
 
