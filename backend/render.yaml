@@ -7,7 +7,26 @@ services:
     plan: free  # Free tier: 750 hours/month
     branch: main
     rootDir: backend  # Important: Tell Render to look in backend folder
-    buildCommand: npm ci && npx puppeteer browsers install chrome
+    buildCommand: |
+      apt-get update && apt-get install -y \
+        wget \
+        gnupg \
+        ca-certificates \
+        fonts-liberation \
+        libasound2 \
+        libatk-bridge2.0-0 \
+        libdrm2 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxrandr2 \
+        libgbm1 \
+        libxss1 \
+        libgtk-3-0 && \
+      wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+      echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+      apt-get update && \
+      apt-get install -y google-chrome-stable && \
+      npm ci
     startCommand: npm start
     healthCheckPath: /health
     
@@ -35,7 +54,7 @@ services:
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
         value: "true"
       - key: PUPPETEER_EXECUTABLE_PATH
-        value: "/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome"
+        value: "/usr/bin/google-chrome-stable"
         
     # Auto-deploy on git push
     autoDeploy: true
